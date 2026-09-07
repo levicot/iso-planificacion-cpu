@@ -1,0 +1,798 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Planificador paso a paso</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#EDEFF3; --panel:#FFFFFF; --panel-2:#F4F6F8; --panel-3:#E6EAEF;
+  --ink:#161920; --ink-2:#545A68; --ink-3:#868D9C;
+  --line:#DBDFE6; --line-2:#C3C9D3; --danger:#B0271F;
+  --c1-soft:#EEEDFE; --c1-chip:#CECBF6; --c1-mid:#7F77DD; --c1-deep:#26215C;
+  --c2-soft:#E1F5EE; --c2-chip:#9FE1CB; --c2-mid:#1D9E75; --c2-deep:#04342C;
+  --c3-soft:#FAECE7; --c3-chip:#F5C4B3; --c3-mid:#D85A30; --c3-deep:#4A1B0C;
+  --c4-soft:#E6F1FB; --c4-chip:#B5D4F4; --c4-mid:#378ADD; --c4-deep:#042C53;
+  --c5-soft:#FAEEDA; --c5-chip:#FAC775; --c5-mid:#BA7517; --c5-deep:#412402;
+  --c6-soft:#EAF3DE; --c6-chip:#C0DD97; --c6-mid:#639922; --c6-deep:#173404;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#101319; --panel:#191D24; --panel-2:#20252E; --panel-3:#2A313B;
+  --ink:#E7EAF0; --ink-2:#A0A7B5; --ink-3:#79808F;
+  --line:#2C323C; --line-2:#3C434F; --danger:#F09595;
+  --c1-soft:#26215C; --c1-chip:#3C3489; --c1-mid:#7F77DD; --c1-deep:#CECBF6;
+  --c2-soft:#04342C; --c2-chip:#085041; --c2-mid:#1D9E75; --c2-deep:#9FE1CB;
+  --c3-soft:#4A1B0C; --c3-chip:#712B13; --c3-mid:#D85A30; --c3-deep:#F5C4B3;
+  --c4-soft:#042C53; --c4-chip:#0C447C; --c4-mid:#378ADD; --c4-deep:#B5D4F4;
+  --c5-soft:#412402; --c5-chip:#633806; --c5-mid:#BA7517; --c5-deep:#FAC775;
+  --c6-soft:#173404; --c6-chip:#27500A; --c6-mid:#639922; --c6-deep:#C0DD97;
+}}
+:root[data-theme="dark"]{
+  --bg:#101319; --panel:#191D24; --panel-2:#20252E; --panel-3:#2A313B;
+  --ink:#E7EAF0; --ink-2:#A0A7B5; --ink-3:#79808F;
+  --line:#2C323C; --line-2:#3C434F; --danger:#F09595;
+  --c1-soft:#26215C; --c1-chip:#3C3489; --c1-mid:#7F77DD; --c1-deep:#CECBF6;
+  --c2-soft:#04342C; --c2-chip:#085041; --c2-mid:#1D9E75; --c2-deep:#9FE1CB;
+  --c3-soft:#4A1B0C; --c3-chip:#712B13; --c3-mid:#D85A30; --c3-deep:#F5C4B3;
+  --c4-soft:#042C53; --c4-chip:#0C447C; --c4-mid:#378ADD; --c4-deep:#B5D4F4;
+  --c5-soft:#412402; --c5-chip:#633806; --c5-mid:#BA7517; --c5-deep:#FAC775;
+  --c6-soft:#173404; --c6-chip:#27500A; --c6-mid:#639922; --c6-deep:#C0DD97;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:'IBM Plex Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.app{max-width:1160px;margin:0 auto;padding:34px 22px 72px;display:flex;flex-direction:column;gap:22px}
+h1{font-size:31px;font-weight:600;letter-spacing:-.015em;margin:0;text-wrap:balance}
+h2{margin:0;font-size:16px;font-weight:600;letter-spacing:-.01em}
+p{margin:0}
+.mono{font-family:'IBM Plex Mono',ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums}
+.eyebrow{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;
+  letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3)}
+.lead{color:var(--ink-2);max-width:64ch;margin-top:8px}
+header{border-bottom:1px solid var(--line);padding-bottom:20px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.panel > .eyebrow{display:block;margin-bottom:12px}
+.cols{display:grid;grid-template-columns:1.15fr 1fr;gap:18px;align-items:start}
+.abajo{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+.stackcol{display:flex;flex-direction:column;gap:18px}
+@media (max-width:900px){ .cols,.abajo{grid-template-columns:1fr} }
+
+label{font-size:13px;color:var(--ink-2)}
+input,select{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--ink);
+  background:var(--panel-2);border:1px solid var(--line-2);border-radius:6px;padding:6px 8px;width:100%}
+select{font-family:'IBM Plex Sans',sans-serif}
+input:focus-visible,select:focus-visible,button:focus-visible,.tl-scroll:focus-visible{
+  outline:2px solid var(--ink);outline-offset:2px}
+.btn{font-family:inherit;font-size:13px;font-weight:500;color:var(--ink);background:var(--panel);
+  border:1px solid var(--line-2);border-radius:7px;padding:7px 12px;cursor:pointer;white-space:nowrap}
+.btn:hover:not(:disabled){border-color:var(--ink-3);background:var(--panel-2)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-pri{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+.btn-pri:hover:not(:disabled){background:var(--ink-2);border-color:var(--ink-2);color:var(--panel)}
+.btn-icon{width:38px;padding:7px 0;text-align:center}
+.btn-mini{font-family:inherit;font-size:11.5px;font-weight:500;color:var(--ink-2);background:none;
+  border:1px solid var(--line-2);border-radius:20px;padding:2px 10px;cursor:pointer;white-space:nowrap}
+.btn-mini:hover:not(:disabled){color:var(--ink);border-color:var(--ink-3);background:var(--panel)}
+.btn-mini:disabled{opacity:.35;cursor:not-allowed}
+.btn-x{border:none;background:none;color:var(--ink-3);cursor:pointer;font-size:16px;line-height:1;padding:2px 6px;border-radius:5px}
+.btn-x:hover{color:var(--danger);background:var(--panel-2)}
+
+.proc{border:1px solid var(--line);border-radius:9px;padding:10px 12px;background:var(--panel-2);margin-bottom:9px}
+.proc-top{display:flex;align-items:center;gap:12px;margin-bottom:9px}
+.pid{display:flex;align-items:center;gap:7px;font-family:'IBM Plex Mono',monospace;font-size:13.5px;font-weight:600}
+.dot{width:11px;height:11px;border-radius:3px;background:var(--mid);flex:none}
+.proc-top label{display:flex;align-items:center;gap:6px;font-size:12.5px;white-space:nowrap}
+.proc-top input{width:56px;padding:3px 6px;text-align:center}
+.sp{flex:1}
+.fases{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.fase{display:inline-flex;align-items:center;gap:5px;border-radius:6px;padding:3px 7px;
+  font-family:'IBM Plex Mono',monospace;font-size:11.5px;background:var(--panel)}
+.fase-cpu{border:1px solid var(--line-2);color:var(--ink)}
+.fase-io{border:1px dashed var(--line-2);color:var(--ink-2)}
+.fase input{width:40px;padding:1px 3px;text-align:center;font-size:11.5px;background:var(--panel-2)}
+.fase select{width:auto;padding:1px 3px;font-size:11.5px;background:var(--panel-2);
+  font-family:'IBM Plex Sans',sans-serif;max-width:104px}
+.flecha{color:var(--ink-3);font-size:10px}
+.fase-acc{display:flex;gap:5px;margin-left:4px}
+.err{color:var(--danger);font-size:12px;margin-top:7px}
+.filas-acc{display:flex;gap:8px;margin-top:4px}
+.hint{font-size:12.5px;color:var(--ink-3);margin-top:11px;line-height:1.55}
+.campo{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.radios{display:flex;flex-direction:column;gap:2px}
+.radio{display:flex;gap:9px;align-items:baseline;padding:6px 8px;border-radius:6px;cursor:pointer}
+.radio:hover{background:var(--panel-2)}
+.radio input{width:auto;margin:0}
+.radio b{font-weight:500;font-size:13.5px}
+.radio span{font-size:12px;color:var(--ink-3)}
+.dev-fila{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.dev-fila .num-dev{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--ink-3);width:16px;flex:none}
+
+.transport{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid var(--line)}
+.reloj{font-family:'IBM Plex Mono',monospace;font-size:23px;font-weight:600;
+  letter-spacing:-.02em;font-variant-numeric:tabular-nums;min-width:74px}
+.reloj small{font-size:12px;font-weight:400;color:var(--ink-3);letter-spacing:0}
+input[type=range]{flex:1;min-width:130px;width:auto;padding:0;background:none;border:none;accent-color:var(--ink)}
+
+.tl-panel{background:var(--panel);border:1px solid var(--line-2);border-radius:10px;padding:16px 18px}
+.tl-head{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:12px}
+.legend{display:flex;gap:13px;flex-wrap:wrap;font-size:11.5px;color:var(--ink-2)}
+.legend span{display:flex;align-items:center;gap:5px}
+.sw{width:16px;height:12px;border-radius:2px;display:inline-block;flex:none;
+  background:var(--panel-3);border:1px solid var(--line-2)}
+.sw-e{background:var(--ink-3);border-color:var(--ink-3)}
+.sw-n{background:var(--panel-2)}
+.sw-u{background-image:repeating-linear-gradient(45deg,var(--ink-3) 0 2px,transparent 2px 5px)}
+.sw-w{background-image:repeating-linear-gradient(to right,var(--ink-3) 0 1px,transparent 1px 4px)}
+.tl-scroll{overflow-x:auto;overflow-y:hidden;padding-bottom:6px}
+.tl-body{position:relative;display:flex;flex-direction:column;gap:3px;width:max-content;min-width:100%}
+.row{display:flex;align-items:center;gap:8px}
+.lab{width:88px;flex:none;font-family:'IBM Plex Mono',monospace;font-size:11px;
+  color:var(--ink-2);text-align:right;letter-spacing:.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lab b{color:var(--ink);font-weight:500;font-size:11.5px}
+.track{position:relative;height:22px;background:var(--panel-2);border-radius:3px;flex:none}
+.track-rec{height:26px}
+.blk{position:absolute;top:0;bottom:0;border-radius:2px}
+.st-ejecutando{background:var(--mid)}
+.st-usandoES{background:var(--soft);background-image:repeating-linear-gradient(45deg,var(--mid) 0 2px,transparent 2px 6px)}
+.st-esperaES{background:var(--soft);background-image:repeating-linear-gradient(to right,var(--mid) 0 1px,transparent 1px 5px)}
+.rec-blk{background:var(--chip);color:var(--deep);font-family:'IBM Plex Mono',monospace;
+  font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.rec-idle{background:transparent;border-bottom:2px dotted var(--line-2);top:auto;height:0;bottom:12px;border-radius:0}
+.axis{position:relative;height:16px;flex:none;margin-bottom:2px}
+.tick{position:absolute;top:0;transform:translateX(-50%);font-family:'IBM Plex Mono',monospace;
+  font-size:10.5px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.sep{height:1px;background:var(--line);flex:none;margin:4px 0}
+.playhead{position:absolute;top:0;bottom:0;width:2px;background:var(--ink);pointer-events:none;border-radius:1px}
+
+.cola{display:flex;align-items:center;gap:7px;flex-wrap:wrap;min-height:32px}
+.chip{display:flex;align-items:center;gap:6px;background:var(--chip);color:var(--deep);
+  border-radius:6px;padding:4px 9px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;font-weight:600}
+.chip em{font-style:normal;font-weight:400;opacity:.82;font-size:11px}
+.cabeza{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--ink-3)}
+.vacio{color:var(--ink-3);font-size:13px;font-style:italic}
+.dev-est{border-bottom:1px solid var(--line);padding:9px 0}
+.dev-est:last-child{border-bottom:none;padding-bottom:0}
+.dev-est:first-child{padding-top:0}
+.dev-nom{font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;margin-bottom:5px}
+.dev-nom span{font-weight:400;color:var(--ink-3);font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin-left:6px}
+.ev ul{margin:0;padding:0;display:flex;flex-direction:column;gap:9px}
+.ev li{list-style:none;display:flex;gap:9px;font-size:13.5px;line-height:1.45;color:var(--ink-2)}
+.badge{font-family:'IBM Plex Mono',monospace;font-size:10.5px;font-weight:500;background:var(--panel-3);
+  color:var(--ink-2);border-radius:4px;padding:2px 6px;height:fit-content;flex:none;margin-top:2px}
+.estados{display:flex;flex-direction:column}
+.est-fila{display:grid;grid-template-columns:auto auto 1fr auto;gap:9px;align-items:center;
+  padding:6px 0;border-bottom:1px solid var(--line)}
+.est-fila:last-child{border-bottom:none}
+.pill{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.04em;text-transform:uppercase;
+  padding:2px 7px;border-radius:20px;background:var(--panel-3);color:var(--ink-2);white-space:nowrap}
+.pill.ejecutando{background:var(--mid);color:var(--panel)}
+.pill.listo{background:var(--soft);color:var(--deep)}
+.num{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--ink-3);
+  font-variant-numeric:tabular-nums;text-align:right}
+
+.tabla-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:7px 11px 7px 0;text-align:right;font-family:'IBM Plex Mono',monospace;font-size:12.5px}
+th{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);font-weight:500;
+  border-bottom:1px solid var(--line-2);white-space:nowrap}
+td{border-bottom:1px solid var(--line);color:var(--ink-2)}
+th:first-child,td:first-child{text-align:left;padding-left:0}
+td.id{color:var(--ink);font-weight:500}
+tr.prom td{border-bottom:none;color:var(--ink);font-weight:600;padding-top:10px}
+.global{display:flex;gap:24px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.global div{display:flex;flex-direction:column;gap:1px}
+.global .k{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--ink-3)}
+.global .v{font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:600}
+details{border-top:1px solid var(--line);padding-top:14px;margin-top:4px}
+summary{cursor:pointer;font-size:13.5px;font-weight:500;color:var(--ink-2)}
+summary:hover{color:var(--ink)}
+details ul{margin:10px 0 0;padding-left:20px;color:var(--ink-2);font-size:13.5px;line-height:1.6}
+details li{margin-bottom:5px}
+.compartir{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.compartir input{flex:1;min-width:180px;font-size:11.5px;color:var(--ink-2)}
+footer{color:var(--ink-3);font-size:12.5px;border-top:1px solid var(--line);padding-top:16px}
+kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--panel-3);
+  border:1px solid var(--line-2);border-radius:4px;padding:1px 5px;color:var(--ink-2)}
+.pc1{--soft:var(--c1-soft);--chip:var(--c1-chip);--mid:var(--c1-mid);--deep:var(--c1-deep)}
+.pc2{--soft:var(--c2-soft);--chip:var(--c2-chip);--mid:var(--c2-mid);--deep:var(--c2-deep)}
+.pc3{--soft:var(--c3-soft);--chip:var(--c3-chip);--mid:var(--c3-mid);--deep:var(--c3-deep)}
+.pc4{--soft:var(--c4-soft);--chip:var(--c4-chip);--mid:var(--c4-mid);--deep:var(--c4-deep)}
+.pc5{--soft:var(--c5-soft);--chip:var(--c5-chip);--mid:var(--c5-mid);--deep:var(--c5-deep)}
+.pc6{--soft:var(--c6-soft);--chip:var(--c6-chip);--mid:var(--c6-mid);--deep:var(--c6-deep)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div class="eyebrow">Introducción a sistemas operativos</div>
+  <h1>Planificador paso a paso</h1>
+  <p class="lead">Definí un lote de procesos con sus ráfagas de CPU y sus pedidos de E/S a dispositivos concretos, elegí una política y avanzá el reloj de a una unidad para ver qué decide el planificador en cada instante y por qué.</p>
+</header>
+
+<div class="cols">
+  <section class="panel">
+    <span class="eyebrow">Lote de procesos</span>
+    <div id="lote"></div>
+    <div class="filas-acc">
+      <button class="btn" id="add">Agregar proceso</button>
+      <button class="btn" id="ejemplo">Restaurar ejemplo</button>
+    </div>
+    <p class="hint">Cada proceso es una secuencia que empieza y termina usando la CPU. <b>Agregar E/S</b> suma un pedido a un dispositivo y la ráfaga de CPU que viene después, así la secuencia siempre queda bien formada.</p>
+  </section>
+
+  <div class="stackcol">
+    <section class="panel">
+      <span class="eyebrow">Política de planificación</span>
+      <div class="radios" id="algs"></div>
+      <div class="campo" id="campoQ" style="margin-top:12px">
+        <label for="q">Quantum (unidades de tiempo)</label>
+        <input type="number" id="q" min="1" max="20" value="2">
+      </div>
+      <div class="campo" style="margin-bottom:0">
+        <label for="emp">Si en el mismo instante llega un proceso y otro agota su quantum</label>
+        <select id="emp">
+          <option value="llegadas">Entra primero el que llega</option>
+          <option value="desalojado">Entra primero el desalojado</option>
+        </select>
+      </div>
+    </section>
+    <section class="panel">
+      <span class="eyebrow">Dispositivos de E/S</span>
+      <div id="devs"></div>
+      <button class="btn" id="addDev" style="margin-top:4px">Agregar dispositivo</button>
+      <p class="hint">Cada dispositivo atiende a un proceso por vez, en orden FIFO. Si está ocupado, el que lo pide queda en su cola: sigue bloqueado, pero todavía no lo está usando.</p>
+    </section>
+  </div>
+</div>
+
+<section class="tl-panel">
+  <div class="transport">
+    <div class="reloj" id="reloj">t=0</div>
+    <button class="btn btn-icon" id="ini" aria-label="Ir al inicio" title="Inicio">|◀</button>
+    <button class="btn btn-icon" id="atras" aria-label="Un paso atrás" title="Atrás">◀</button>
+    <button class="btn btn-pri" id="play" style="min-width:112px">▶ Reproducir</button>
+    <button class="btn btn-icon" id="adel" aria-label="Un paso adelante" title="Adelante">▶</button>
+    <button class="btn btn-icon" id="fin" aria-label="Ir al final" title="Final">▶|</button>
+    <input type="range" id="scrub" min="0" max="1" value="0" aria-label="Instante de la simulación">
+    <select id="vel" style="width:auto" aria-label="Velocidad"><option value="900">Lento</option><option value="450" selected>Normal</option><option value="180">Rápido</option></select>
+  </div>
+  <div class="tl-head">
+    <h2>Línea de tiempo</h2>
+    <div class="legend">
+      <span><i class="sw sw-e"></i>usando la CPU</span>
+      <span><i class="sw sw-u"></i>usando E/S</span>
+      <span><i class="sw sw-w"></i>esperando el dispositivo</span>
+      <span><i class="sw sw-n"></i>sin recursos: espera la CPU</span>
+    </div>
+  </div>
+  <div class="tl-scroll" id="tlScroll" tabindex="0"><div class="tl-body" id="tl"></div></div>
+</section>
+
+<div class="abajo">
+  <div class="stackcol">
+    <section class="panel">
+      <span class="eyebrow">Cola de listos</span>
+      <div class="cola" id="cola"></div>
+    </section>
+    <section class="panel">
+      <span class="eyebrow">Dispositivos</span>
+      <div id="devEst"></div>
+    </section>
+    <section class="panel">
+      <span class="eyebrow">Estado de cada proceso</span>
+      <div class="estados" id="estados"></div>
+    </section>
+  </div>
+  <section class="panel">
+    <span class="eyebrow">Qué pasa en este instante</span>
+    <div class="ev" id="eventos" aria-live="polite"></div>
+  </section>
+</div>
+
+<section class="panel">
+  <span class="eyebrow">Métricas del lote</span>
+  <div class="tabla-wrap"><table id="metricas"></table></div>
+  <div class="global" id="global"></div>
+  <details>
+    <summary>Convenciones que usa este simulador</summary>
+    <ul>
+      <li>Cada dispositivo atiende a un proceso por vez y sin expropiación: el que empieza un servicio lo termina.</li>
+      <li>La cola de cada dispositivo es FIFO, por orden de pedido. Cuando el dispositivo se libera toma al primero de su cola en ese mismo instante.</li>
+      <li>El tiempo en la cola de un dispositivo cuenta como <b>espera de E/S</b>, no como espera de CPU. Por eso <span class="mono">retorno = CPU + E/S + espera CPU + espera E/S</span>.</li>
+      <li>Dentro de un mismo instante, primero se encolan en listos los procesos que terminan su E/S y después las llegadas nuevas.</li>
+      <li>En SJF y SRTF, ante dos procesos con la misma ráfaga o el mismo tiempo restante gana el que lleva más tiempo en la cola.</li>
+      <li>SJF compara la <b>ráfaga de CPU actual</b>, no la suma de todas las ráfagas del proceso.</li>
+      <li>En SRTF la expropiación se evalúa al comienzo de cada unidad de tiempo, y sólo si el candidato tiene un tiempo restante estrictamente menor.</li>
+      <li>En Round Robin el quantum se reinicia completo cada vez que un proceso toma la CPU, incluso cuando vuelve de E/S.</li>
+    </ul>
+  </details>
+</section>
+
+<section class="panel">
+  <span class="eyebrow">Compartir este ejercicio</span>
+  <p class="hint" style="margin:0 0 10px">Copiá el código para pasarle el lote a otra persona, o pegá uno que te hayan dado y cargalo.</p>
+  <div class="compartir">
+    <input type="text" id="codigo" readonly aria-label="Código del ejercicio">
+    <button class="btn" id="copiar">Copiar</button>
+    <button class="btn" id="pegar">Cargar un código</button>
+  </div>
+  <p class="err" id="errCodigo" style="display:none"></p>
+</section>
+
+<footer>Atajos de teclado: <kbd>←</kbd> <kbd>→</kbd> para moverte un paso, <kbd>espacio</kbd> para reproducir o pausar, <kbd>inicio</kbd> y <kbd>fin</kbd> para ir a los extremos.</footer>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const MAXP = 6, MAXD = 3, MAXDUR = 40;
+const ALGS = [
+  {id:'fcfs', n:'FCFS', d:'Por orden de llegada, sin expropiación'},
+  {id:'sjf',  n:'SJF',  d:'La ráfaga más corta primero, sin expropiación'},
+  {id:'srtf', n:'SRTF', d:'Menor tiempo restante, con expropiación'},
+  {id:'rr',   n:'RR',   d:'Turno rotativo con quantum fijo'}
+];
+const cpuF = d => ({t:'cpu', d});
+const ioF = (dev,d) => ({t:'io', dev, d});
+const EJEMPLO = () => ({
+  devs:['Disco','Impresora'],
+  lote:[
+    {llegada:0,  fases:[cpuF(3), ioF(0,5), cpuF(2)]},
+    {llegada:1,  fases:[cpuF(2), ioF(0,6), cpuF(3)]},
+    {llegada:9,  fases:[cpuF(4), ioF(1,3), cpuF(2)]},
+    {llegada:16, fases:[cpuF(3)]}
+  ],
+  cfg:{alg:'rr', quantum:2, emp:'llegadas'}
+});
+let {devs, lote, cfg} = EJEMPLO();
+let sim = null, paso = 0, tocando = false, timer = null;
+
+function validar(){
+  const errs = {}, ps = [];
+  lote.forEach((p,i) => {
+    const lleg = Number(p.llegada);
+    let e = null;
+    if(!Number.isInteger(lleg) || lleg < 0 || lleg > 99) e = 'La llegada tiene que ser un entero entre 0 y 99';
+    else for(const f of p.fases){
+      const d = Number(f.d);
+      if(!Number.isInteger(d) || d < 1 || d > MAXDUR){ e = `Cada ráfaga tiene que durar entre 1 y ${MAXDUR} unidades`; break; }
+    }
+    if(e) errs[i] = e;
+    else ps.push({id:'P'+(i+1), i, llegada:lleg,
+      fases:p.fases.map(f => f.t === 'cpu' ? cpuF(Number(f.d)) : ioF(Math.min(f.dev, devs.length-1), Number(f.d)))});
+  });
+  return {errs, ps, ok:Object.keys(errs).length === 0 && ps.length > 0};
+}
+
+function elegir(cola, est, c){
+  if(c.alg === 'fcfs' || c.alg === 'rr') return cola[0];
+  let mejor = cola[0];
+  for(const id of cola) if(est[id].restante < est[mejor].restante) mejor = id;
+  return mejor;
+}
+function motivo(id, est, c, cola){
+  const e = est[id], rivales = cola.filter(x => x !== id);
+  if(!rivales.length) return `Se despacha ${id}: es el único proceso listo`;
+  const lista = rivales.map(x => `${x}:${est[x].restante}`).join(', ');
+  if(c.alg === 'fcfs') return `Se despacha ${id}: está a la cabeza de la cola, es el que llegó primero de los que esperan`;
+  if(c.alg === 'rr')   return `Se despacha ${id} por un quantum de ${c.quantum}: está a la cabeza de la cola circular`;
+  if(c.alg === 'sjf')  return `Se despacha ${id}: su ráfaga de CPU (${e.restante}) es la más corta entre los listos (${lista})`;
+  return `Se despacha ${id}: su tiempo restante (${e.restante}) es el menor entre los listos (${lista})`;
+}
+
+function simular(ps, nombres, c){
+  const est = {};
+  ps.forEach(p => est[p.id] = {id:p.id, i:p.i, llegada:p.llegada, fases:p.fases,
+    f:0, restante:p.fases[0].d, estado:'nuevo', q:0, dev:null,
+    inicio:null, fin:null, cpu:0, usoES:0, espCPU:0, espES:0});
+  const D = nombres.map((n,i) => ({i, n, ocupa:null, restante:0, cola:[], uso:0}));
+  let cola = [], corriendo = null, desalojado = null, pend = [], t = 0;
+  const linea = {}, cpuL = [], devL = D.map(() => []), pasos = [];
+  ps.forEach(p => linea[p.id] = []);
+  const LIM = 400;
+  const listo = () => ps.every(p => est[p.id].estado === 'terminado');
+
+  while(!listo() && t < LIM){
+    const ev = pend; pend = [];
+    const entran = [];
+
+    D.forEach(d => {
+      if(d.ocupa && d.restante === 0){
+        const e = est[d.ocupa];
+        d.ocupa = null; e.dev = null;
+        e.f++; e.restante = e.fases[e.f].d; e.estado = 'listo';
+        entran.push(e.id);
+        ev.push({txt:`${e.id} termina su E/S en ${d.n} y vuelve a la cola de listos con una ráfaga de CPU de ${e.restante}`});
+      }
+    });
+    D.forEach(d => {
+      if(!d.ocupa && d.cola.length){
+        const id = d.cola.shift(), e = est[id];
+        d.ocupa = id; d.restante = e.restante; e.estado = 'usandoES';
+        ev.push({txt:`${d.n} empieza a atender a ${id} durante ${e.restante} unidades` +
+          (d.cola.length ? `; quedan ${d.cola.length} en su cola` : '')});
+      }
+    });
+    ps.forEach(p => { const e = est[p.id];
+      if(e.estado === 'nuevo' && e.llegada === t){
+        e.estado = 'listo'; entran.push(e.id);
+        ev.push({txt:`Llega ${e.id} al sistema con una ráfaga de CPU de ${e.restante}`});
+      }});
+
+    if(desalojado !== null){
+      if(c.emp === 'llegadas') cola.push(...entran, desalojado);
+      else cola.push(desalojado, ...entran);
+      desalojado = null;
+    } else cola.push(...entran);
+
+    if(corriendo && c.alg === 'srtf' && cola.length){
+      const cand = elegir(cola, est, c);
+      if(est[cand].restante < est[corriendo].restante){
+        ev.push({txt:`${cand} expropia la CPU a ${corriendo}: le restan ${est[cand].restante} unidades contra ${est[corriendo].restante}`});
+        est[corriendo].estado = 'listo'; cola.push(corriendo); corriendo = null;
+      }
+    }
+    if(!corriendo && cola.length){
+      const id = elegir(cola, est, c);
+      ev.push({txt:motivo(id, est, c, cola)});
+      cola.splice(cola.indexOf(id), 1);
+      corriendo = id;
+      const e = est[id];
+      e.estado = 'ejecutando'; e.q = c.quantum;
+      if(e.inicio === null) e.inicio = t;
+    }
+
+    cpuL[t] = corriendo;
+    D.forEach(d => { devL[d.i][t] = d.ocupa; if(d.ocupa) d.uso++; });
+    ps.forEach(p => { const e = est[p.id];
+      linea[p.id][t] = e.estado;
+      if(e.estado === 'ejecutando') e.cpu++;
+      else if(e.estado === 'listo') e.espCPU++;
+      else if(e.estado === 'usandoES') e.usoES++;
+      else if(e.estado === 'esperaES') e.espES++;
+    });
+    pasos.push({t, corriendo, cola:cola.slice(), ev,
+      devs:D.map(d => ({i:d.i, n:d.n, ocupa:d.ocupa, restante:d.restante, cola:d.cola.slice()})),
+      snap:ps.map(p => { const e = est[p.id];
+        return {id:e.id, i:e.i, estado:e.estado, restante:e.restante, f:e.f, tot:e.fases.length,
+          dev:e.estado === 'usandoES' || e.estado === 'esperaES' ? e.fases[e.f].dev : null};})});
+
+    if(corriendo){
+      const e = est[corriendo];
+      e.restante--; e.q--;
+      if(e.restante === 0){
+        e.f++;
+        if(e.f >= e.fases.length){
+          e.estado = 'terminado'; e.fin = t+1;
+          pend.push({txt:`${e.id} completa su última ráfaga de CPU y termina`});
+        } else {
+          const fa = e.fases[e.f], d = D[fa.dev];
+          e.restante = fa.d; e.estado = 'esperaES'; e.dev = fa.dev;
+          d.cola.push(e.id);
+          pend.push({txt:`${e.id} termina su ráfaga de CPU y pide ${d.n} por ${fa.d} unidades` +
+            (d.ocupa ? `, pero ${d.n} está ocupado por ${d.ocupa}: entra en su cola` : '')});
+        }
+        corriendo = null;
+      } else if(c.alg === 'rr' && e.q === 0){
+        e.estado = 'listo'; desalojado = e.id; corriendo = null;
+        pend.push({txt:`${e.id} agota su quantum y vuelve al final de la cola de listos; le restan ${e.restante} unidades de CPU`});
+      }
+    }
+    D.forEach(d => { if(d.ocupa) d.restante--; });
+    t++;
+  }
+  pasos.push({t, corriendo:null, cola:[], ev:pend,
+    devs:D.map(d => ({i:d.i, n:d.n, ocupa:null, restante:0, cola:[]})),
+    snap:ps.map(p => { const e = est[p.id];
+      return {id:e.id, i:e.i, estado:e.estado, restante:0, f:e.f, tot:e.fases.length, dev:null};})});
+
+  const met = ps.map(p => { const e = est[p.id];
+    return {id:e.id, i:e.i, llegada:e.llegada, cpu:e.cpu, es:e.usoES, espCPU:e.espCPU, espES:e.espES,
+      fin:e.fin, retorno:e.fin - e.llegada, respuesta:e.inicio - e.llegada};});
+  return {T:t, ps, devs:D, linea, cpuL, devL, pasos, met,
+    uso:t ? cpuL.filter(x => x).length / t : 0,
+    usoDev:D.map(d => t ? d.uso / t : 0),
+    cambios:cpuL.filter((x,i) => i && x && x !== cpuL[i-1]).length};
+}
+
+const pc = i => 'pc' + ((i % 6) + 1);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function renderLote(){
+  const cont = $('#lote');
+  cont.innerHTML = lote.map((p,i) => {
+    const fases = p.fases.map((f,j) => {
+      const flecha = j ? '<span class="flecha">→</span>' : '';
+      if(f.t === 'cpu') return `${flecha}<span class="fase fase-cpu">CPU <input type="number" min="1" max="${MAXDUR}" value="${f.d}" data-i="${i}" data-j="${j}" data-k="d" aria-label="Duración de la ráfaga de CPU ${Math.floor(j/2)+1} de P${i+1}"></span>`;
+      const opts = devs.map((d,k) => `<option value="${k}" ${k === Math.min(f.dev, devs.length-1) ? 'selected' : ''}>${esc(d)}</option>`).join('');
+      return `${flecha}<span class="fase fase-io"><select data-i="${i}" data-j="${j}" data-k="dev" aria-label="Dispositivo del pedido de E/S ${Math.floor(j/2)+1} de P${i+1}">${opts}</select><input type="number" min="1" max="${MAXDUR}" value="${f.d}" data-i="${i}" data-j="${j}" data-k="d" aria-label="Duración de la E/S ${Math.floor(j/2)+1} de P${i+1}"></span>`;
+    }).join('');
+    return `<div class="proc ${pc(i)}">
+      <div class="proc-top">
+        <span class="pid"><i class="dot"></i>P${i+1}</span>
+        <label>llega en <input type="number" min="0" max="99" value="${p.llegada}" data-i="${i}" data-k="llegada" aria-label="Instante de llegada de P${i+1}"></label>
+        <span class="sp"></span>
+        ${lote.length > 1 ? `<button class="btn-x" data-del="${i}" aria-label="Eliminar P${i+1}">&times;</button>` : ''}
+      </div>
+      <div class="fases">${fases}
+        <span class="fase-acc">
+          <button class="btn-mini" data-addf="${i}">+ E/S</button>
+          <button class="btn-mini" data-delf="${i}" ${p.fases.length < 3 ? 'disabled' : ''}>− E/S</button>
+        </span>
+      </div>
+      <div class="err" id="err${i}" style="display:none"></div>
+    </div>`;
+  }).join('');
+
+  cont.querySelectorAll('input,select').forEach(el => el.addEventListener('input', e => {
+    const {i, j, k} = e.target.dataset;
+    if(k === 'llegada') lote[+i].llegada = e.target.value === '' ? '' : +e.target.value;
+    else lote[+i].fases[+j][k] = e.target.value === '' ? '' : +e.target.value;
+    recalcular();
+  }));
+  cont.querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', e => {
+    lote.splice(+e.currentTarget.dataset.del, 1); renderLote(); recalcular();
+  }));
+  cont.querySelectorAll('[data-addf]').forEach(b => b.addEventListener('click', e => {
+    lote[+e.currentTarget.dataset.addf].fases.push(ioF(0, 3), cpuF(2)); renderLote(); recalcular();
+  }));
+  cont.querySelectorAll('[data-delf]').forEach(b => b.addEventListener('click', e => {
+    const f = lote[+e.currentTarget.dataset.delf].fases;
+    if(f.length >= 3) f.splice(-2, 2);
+    renderLote(); recalcular();
+  }));
+  $('#add').disabled = lote.length >= MAXP;
+}
+
+function renderDevs(){
+  $('#devs').innerHTML = devs.map((d,i) =>
+    `<div class="dev-fila"><span class="num-dev">${i+1}</span>` +
+    `<input type="text" maxlength="14" value="${esc(d)}" data-dev="${i}" aria-label="Nombre del dispositivo ${i+1}">` +
+    (devs.length > 1 ? `<button class="btn-x" data-deldev="${i}" aria-label="Eliminar ${esc(d)}">&times;</button>` : '<span style="width:26px"></span>') +
+    `</div>`).join('');
+  $('#devs').querySelectorAll('input').forEach(el => el.addEventListener('input', e => {
+    devs[+e.target.dataset.dev] = e.target.value || 'Dispositivo';
+    recalcular();
+  }));
+  $('#devs').querySelectorAll('[data-deldev]').forEach(b => b.addEventListener('click', e => {
+    const k = +e.currentTarget.dataset.deldev;
+    devs.splice(k, 1);
+    lote.forEach(p => p.fases.forEach(f => { if(f.t === 'io') f.dev = f.dev === k ? 0 : (f.dev > k ? f.dev - 1 : f.dev); }));
+    renderDevs(); renderLote(); recalcular();
+  }));
+  $('#addDev').disabled = devs.length >= MAXD;
+}
+
+function renderAlgs(){
+  $('#algs').innerHTML = ALGS.map(a => `<label class="radio"><input type="radio" name="alg" value="${a.id}" ${cfg.alg === a.id ? 'checked' : ''}><span><b>${a.n}</b> <span>— ${a.d}</span></span></label>`).join('');
+  $('#algs').querySelectorAll('input').forEach(r => r.addEventListener('change', e => {
+    cfg.alg = e.target.value; recalcular();
+  }));
+}
+
+function tramos(arr){
+  const r = [];
+  for(let i = 0; i < arr.length; i++){
+    const v = arr[i] === undefined ? null : arr[i];
+    if(r.length && r[r.length-1].v === v) r[r.length-1].len++;
+    else r.push({v, a:i, len:1});
+  }
+  return r;
+}
+function filaRecurso(lab, serie, k, u, W){
+  const cont = tramos(serie.slice(0,k)).map(r => {
+    if(!r.v) return `<div class="blk rec-idle" style="left:${r.a*u}px;width:${r.len*u}px"></div>`;
+    const p = sim.ps.find(x => x.id === r.v);
+    return `<div class="blk rec-blk ${pc(p.i)}" style="left:${r.a*u}px;width:${r.len*u}px">${r.len*u >= 22 ? r.v : ''}</div>`;
+  }).join('');
+  return `<div class="row"><div class="lab" title="${esc(lab)}"><b>${esc(lab)}</b></div>` +
+    `<div class="track track-rec" style="width:${W}px">${cont}</div></div>`;
+}
+
+function renderTL(){
+  const T = sim.T, k = paso;
+  const disp = Math.max(220, $('#tlScroll').clientWidth - 100);
+  const u = Math.max(13, Math.min(34, Math.floor(disp / Math.max(T,1))));
+  const W = T * u;
+  const salto = u >= 24 ? 1 : (u >= 15 ? 2 : 5);
+  let ejes = '';
+  for(let i = 0; i <= T; i += salto) ejes += `<span class="tick" style="left:${i*u}px">${i}</span>`;
+  if(T % salto !== 0 && (T % salto) * u > 16) ejes += `<span class="tick" style="left:${W}px">${T}</span>`;
+
+  let h = `<div class="row"><div class="lab"></div><div class="axis" style="width:${W}px">${ejes}</div></div>`;
+  h += filaRecurso('CPU', sim.cpuL, k, u, W);
+  sim.devs.forEach(d => { h += filaRecurso(d.n, sim.devL[d.i], k, u, W); });
+  h += `<div class="row"><div class="lab"></div><div class="sep" style="width:${W}px"></div></div>`;
+  sim.ps.forEach(p => {
+    h += `<div class="row ${pc(p.i)}"><div class="lab"><b>${p.id}</b></div><div class="track" style="width:${W}px">`;
+    h += tramos(sim.linea[p.id].slice(0,k)).map(r =>
+      ['ejecutando','usandoES','esperaES'].includes(r.v)
+        ? `<div class="blk st-${r.v}" style="left:${r.a*u}px;width:${r.len*u}px"></div>` : '').join('');
+    h += '</div></div>';
+  });
+  h += `<div class="playhead" style="left:${96 + k*u}px"></div>`;
+  $('#tl').innerHTML = h;
+  const sc = $('#tlScroll'), x = 96 + k*u;
+  if(x > sc.scrollLeft + sc.clientWidth - 40) sc.scrollLeft = x - sc.clientWidth + 60;
+  if(x < sc.scrollLeft + 40) sc.scrollLeft = Math.max(0, x - 60);
+}
+
+const ETIQ = {nuevo:'nuevo', listo:'listo', ejecutando:'ejecutando', usandoES:'usando E/S',
+  esperaES:'esperando E/S', terminado:'terminado'};
+
+function renderPanel(){
+  const st = sim.pasos[paso];
+  const idxDe = id => sim.ps.find(p => p.id === id).i;
+  const chip = (id, txt) => `<span class="chip ${pc(idxDe(id))}">${id} <em>${txt}</em></span>`;
+
+  $('#reloj').innerHTML = `t=${st.t}` + (paso === sim.pasos.length-1 ? ' <small>fin</small>' : '');
+  $('#scrub').max = sim.pasos.length - 1;
+  $('#scrub').value = paso;
+
+  $('#cola').innerHTML = st.cola.length
+    ? '<span class="cabeza">cabeza →</span>' + st.cola.map(id =>
+        chip(id, 'restan ' + st.snap.find(x => x.id === id).restante)).join('')
+    : '<span class="vacio">No hay procesos esperando la CPU en este instante.</span>';
+
+  $('#devEst').innerHTML = st.devs.map(d => `<div class="dev-est">
+    <div class="dev-nom">${esc(d.n)}<span>${d.ocupa ? 'atendiendo' : 'libre'}</span></div>
+    <div class="cola">${d.ocupa ? chip(d.ocupa, 'restan ' + d.restante) : '<span class="vacio">Sin uso.</span>'}
+      ${d.cola.length ? '<span class="cabeza">en cola →</span>' + d.cola.map(id =>
+        chip(id, 'pide ' + st.snap.find(x => x.id === id).restante)).join('') : ''}</div></div>`).join('');
+
+  $('#estados').innerHTML = st.snap.map(s => {
+    let det = '';
+    if(s.estado === 'ejecutando' || s.estado === 'listo') det = `CPU ${Math.floor(s.f/2)+1} · restan ${s.restante}`;
+    else if(s.estado === 'usandoES') det = `${esc(st.devs[s.dev].n)} · restan ${s.restante}`;
+    else if(s.estado === 'esperaES') det = `${esc(st.devs[s.dev].n)} · pide ${s.restante}`;
+    return `<div class="est-fila ${pc(s.i)}"><i class="dot"></i>` +
+      `<span class="mono" style="font-size:12.5px;font-weight:500">${s.id}</span>` +
+      `<span class="pill ${s.estado}">${ETIQ[s.estado]}</span><span class="num">${det}</span></div>`;
+  }).join('');
+
+  $('#eventos').innerHTML = st.ev.length
+    ? '<ul>' + st.ev.map(e => `<li><span class="badge">t=${st.t}</span><span>${e.txt}</span></li>`).join('') + '</ul>'
+    : '<span class="vacio">Sin cambios: siguen ejecutando los mismos procesos que en el instante anterior.</span>';
+}
+
+function renderMetricas(){
+  const m = sim.met, n = m.length;
+  const prom = f => (m.reduce((a,x) => a + x[f], 0) / n).toFixed(2);
+  let h = '<thead><tr><th>Proceso</th><th>Llegada</th><th>CPU</th><th>E/S</th><th>Esp. CPU</th><th>Esp. E/S</th><th>Fin</th><th>Retorno</th><th>Respuesta</th></tr></thead><tbody>';
+  h += m.map(x => `<tr><td class="id">${x.id}</td><td>${x.llegada}</td><td>${x.cpu}</td><td>${x.es}</td><td>${x.espCPU}</td><td>${x.espES}</td><td>${x.fin}</td><td>${x.retorno}</td><td>${x.respuesta}</td></tr>`).join('');
+  h += `<tr class="prom"><td>Promedio</td><td></td><td></td><td></td><td>${prom('espCPU')}</td><td>${prom('espES')}</td><td></td><td>${prom('retorno')}</td><td>${prom('respuesta')}</td></tr></tbody>`;
+  $('#metricas').innerHTML = h;
+  $('#global').innerHTML =
+    `<div><span class="k">Tiempo total</span><span class="v">${sim.T}</span></div>` +
+    `<div><span class="k">Uso de CPU</span><span class="v">${(sim.uso*100).toFixed(0)}%</span></div>` +
+    sim.devs.map(d => `<div><span class="k">Uso de ${esc(d.n)}</span><span class="v">${(sim.usoDev[d.i]*100).toFixed(0)}%</span></div>`).join('') +
+    `<div><span class="k">Cambios de contexto</span><span class="v">${sim.cambios}</span></div>`;
+}
+
+function recalcular(){
+  const v = validar();
+  lote.forEach((p,i) => {
+    const el = document.getElementById('err'+i);
+    if(!el) return;
+    if(v.errs[i]){ el.textContent = v.errs[i]; el.style.display = 'block'; }
+    else el.style.display = 'none';
+  });
+  if(!v.ok) return;
+  sim = simular(v.ps, devs, cfg);
+  paso = Math.min(paso, sim.pasos.length - 1);
+  $('#campoQ').style.display = cfg.alg === 'rr' ? 'flex' : 'none';
+  $('#codigo').value = codificar();
+  guardar();
+  render();
+}
+function render(){ renderTL(); renderPanel(); renderMetricas(); }
+
+function irA(k){
+  paso = Math.max(0, Math.min(sim.pasos.length - 1, k));
+  render();
+  if(paso === sim.pasos.length - 1) pausar();
+}
+function reproducir(){
+  if(paso >= sim.pasos.length - 1) paso = 0;
+  tocando = true;
+  $('#play').textContent = '❙❙ Pausar';
+  clearInterval(timer);
+  timer = setInterval(() => irA(paso + 1), +$('#vel').value);
+}
+function pausar(){ tocando = false; clearInterval(timer); $('#play').textContent = '▶ Reproducir'; }
+
+function codificar(){
+  try{ return btoa(encodeURIComponent(JSON.stringify({v:2, d:devs, l:lote, c:cfg}))); }catch(e){ return ''; }
+}
+function decodificar(s){
+  const o = JSON.parse(decodeURIComponent(atob(s.trim())));
+  if(!ALGS.some(a => a.id === o.c.alg)) throw 0;
+  const c = {alg:o.c.alg, quantum:Math.max(1, Math.min(20, +o.c.quantum || 2)),
+    emp:o.c.emp === 'desalojado' ? 'desalojado' : 'llegadas'};
+  let d, l;
+  if(o.v === 2){
+    d = o.d.slice(0, MAXD).map(x => String(x).slice(0,14));
+    l = o.l.map(p => ({llegada:+p.llegada, fases:p.fases.map(f =>
+      f.t === 'cpu' ? cpuF(+f.d) : ioF(Math.min(+f.dev || 0, d.length-1), +f.d))}));
+  } else {
+    d = ['Disco'];
+    l = o.l.map(p => ({llegada:+p.llegada,
+      fases:String(p.txt).split(/[,\s]+/).filter(x => x).map((x,j) => j % 2 ? ioF(0, +x) : cpuF(+x))}));
+  }
+  if(!Array.isArray(l) || !l.length || l.length > MAXP || !d.length) throw 0;
+  l.forEach(p => { if(!p.fases.length || p.fases.length % 2 === 0) throw 0;
+    p.fases.forEach(f => { if(!Number.isInteger(f.d) || f.d < 1 || f.d > MAXDUR) throw 0; });
+    if(!Number.isInteger(p.llegada) || p.llegada < 0) throw 0; });
+  return {d, l, c};
+}
+function guardar(){ try{ localStorage.setItem('planif2', codificar()); }catch(e){} }
+function cargarGuardado(){
+  try{ const s = localStorage.getItem('planif2'); if(!s) return;
+    const o = decodificar(s); devs = o.d; lote = o.l; cfg = o.c;
+  }catch(e){}
+}
+
+$('#add').addEventListener('click', () => {
+  if(lote.length >= MAXP) return;
+  lote.push({llegada:lote.length * 2, fases:[cpuF(3), ioF(0,2), cpuF(2)]});
+  renderLote(); recalcular();
+});
+$('#addDev').addEventListener('click', () => {
+  if(devs.length >= MAXD) return;
+  devs.push(['Disco','Impresora','Red'][devs.length] || 'Dispositivo');
+  renderDevs(); renderLote(); recalcular();
+});
+$('#ejemplo').addEventListener('click', () => {
+  const e = EJEMPLO(); devs = e.devs; lote = e.lote; cfg = e.cfg; paso = 0;
+  refrescarControles(); recalcular();
+});
+$('#q').addEventListener('input', e => { cfg.quantum = Math.max(1, Math.min(20, +e.target.value || 1)); recalcular(); });
+$('#emp').addEventListener('change', e => { cfg.emp = e.target.value; recalcular(); });
+$('#ini').addEventListener('click', () => { pausar(); irA(0); });
+$('#fin').addEventListener('click', () => { pausar(); irA(sim.pasos.length - 1); });
+$('#atras').addEventListener('click', () => { pausar(); irA(paso - 1); });
+$('#adel').addEventListener('click', () => { pausar(); irA(paso + 1); });
+$('#play').addEventListener('click', () => tocando ? pausar() : reproducir());
+$('#vel').addEventListener('change', () => { if(tocando) reproducir(); });
+$('#scrub').addEventListener('input', e => { pausar(); irA(+e.target.value); });
+$('#copiar').addEventListener('click', async e => {
+  try{ await navigator.clipboard.writeText($('#codigo').value); e.target.textContent = 'Copiado'; }
+  catch(err){ $('#codigo').select(); e.target.textContent = 'Copiá con ⌘C'; }
+  setTimeout(() => e.target.textContent = 'Copiar', 1800);
+});
+$('#pegar').addEventListener('click', () => {
+  const s = prompt('Pegá el código del ejercicio:'), err = $('#errCodigo');
+  if(s === null) return;
+  try{
+    const o = decodificar(s);
+    devs = o.d; lote = o.l; cfg = o.c; paso = 0;
+    err.style.display = 'none';
+    refrescarControles(); recalcular();
+  }catch(e){ err.textContent = 'Ese código no es válido. Pedí que te lo copien de nuevo, completo.'; err.style.display = 'block'; }
+});
+document.addEventListener('keydown', e => {
+  if(/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+  const acc = {ArrowRight:() => irA(paso+1), ArrowLeft:() => irA(paso-1),
+    Home:() => irA(0), End:() => irA(sim.pasos.length-1)};
+  if(acc[e.key]){ pausar(); acc[e.key](); e.preventDefault(); }
+  else if(e.key === ' '){ tocando ? pausar() : reproducir(); e.preventDefault(); }
+});
+let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => sim && renderTL(), 120); });
+
+function refrescarControles(){
+  renderDevs(); renderLote(); renderAlgs();
+  $('#q').value = cfg.quantum; $('#emp').value = cfg.emp;
+}
+cargarGuardado();
+refrescarControles();
+recalcular();
+irA(Math.round((sim.pasos.length - 1) * 0.45));
+</script>
+
+</body>
+</html>

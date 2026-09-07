@@ -1,0 +1,5 @@
+.DS_Store
+*.bak
+
+# Fragmento para el artifact de Claude; se deriva de index.html
+simulador.html
