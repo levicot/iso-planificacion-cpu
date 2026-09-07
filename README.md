@@ -1,5 +1,7 @@
 # Planificador paso a paso
 
+**▶ [Abrir el simulador](https://levicot.github.io/iso-planificacion-cpu/)**
+
 Simulador visual de algoritmos de planificación de procesos para la materia
 **Introducción a Sistemas Operativos**. Los alumnos definen un lote de procesos
 con sus ráfagas de CPU y sus pedidos de E/S, eligen una política y avanzan el
