@@ -22,6 +22,23 @@ reloj de a una unidad de tiempo para ver qué decide el planificador y por qué.
 un proceso por vez con su propia cola FIFO, así que un proceso bloqueado puede
 estar *esperando el dispositivo* o *usándolo*, y el diagrama los distingue.
 
+## Modo comparación
+
+La línea de tiempo tiene dos modos. En **Comparar los cuatro**, las cuatro
+políticas resuelven el mismo lote sobre un reloj compartido: se ve una franja
+de ocupación de CPU por algoritmo, todas en la misma escala, y una tabla con
+espera media, peor espera individual, respuesta, retorno, cambios de contexto
+y tiempo total, resaltando el mejor valor de cada columna.
+
+## Lotes de ejemplo
+
+- **Lote con E/S** — pocos procesos, ráfagas de E/S largas y dos dispositivos.
+  Sirve para enseñar colas de dispositivo, bloqueo y CPU ociosa.
+- **Lote con CPU disputada** — cinco procesos que llegan casi juntos, sólo CPU.
+  Sirve para comparar políticas: se ve el efecto convoy en FCFS, la inanición
+  del proceso largo en SRTF y el intercambio de Round Robin entre respuesta y
+  cambios de contexto.
+
 ## Cómo se lee la línea de tiempo
 
 Arriba, una fila por recurso (la CPU y cada dispositivo) muestra quién lo ocupa
