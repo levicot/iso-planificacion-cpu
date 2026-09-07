@@ -1,0 +1,320 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'IBM Plex Sans', system-ui, sans-serif; }
+    a { color: #545A68; } a:hover { color: #161920; }
+    .pnl { background:#FFFFFF; border:1px solid #DBDFE6; border-radius:10px; padding:16px 18px; }
+    .eyb { font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:500; letter-spacing:.13em; text-transform:uppercase; color:#868D9C; }
+    .btn { font-family:'IBM Plex Sans',sans-serif; font-size:13px; font-weight:500; color:#161920; background:#FFFFFF; border:1px solid #C3C9D3; border-radius:7px; padding:7px 12px; }
+    .inp { font-family:'IBM Plex Mono',monospace; font-size:13px; color:#161920; background:#F4F6F8; border:1px solid #C3C9D3; border-radius:6px; padding:6px 8px; }
+    .mono { font-family:'IBM Plex Mono',monospace; font-variant-numeric:tabular-nums; }
+    .fase { display:inline-flex; align-items:center; gap:5px; border-radius:6px; padding:3px 7px; font-family:'IBM Plex Mono',monospace; font-size:11.5px; background:#FFFFFF; }
+    .fnum { width:40px; padding:1px 3px; text-align:center; font-size:11.5px; background:#F4F6F8; border:1px solid #C3C9D3; border-radius:6px; font-family:'IBM Plex Mono',monospace; color:#161920; }
+    .lab { width:88px; flex:none; font-family:'IBM Plex Mono',monospace; font-size:11px; color:#545A68; text-align:right; letter-spacing:.01em; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .trk { position:relative; height:22px; background:#F4F6F8; border-radius:3px; flex:none; }
+    .blk { position:absolute; top:0; bottom:0; border-radius:2px; }
+    .rec { height:26px; font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:600; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+    .idle { background:transparent; border-bottom:2px dotted #C3C9D3; top:auto; height:0; bottom:12px; border-radius:0; }
+    .tick { position:absolute; top:0; transform:translateX(-50%); font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:#868D9C; font-variant-numeric:tabular-nums; }
+    .chip { display:flex; align-items:center; gap:6px; border-radius:6px; padding:4px 9px; font-family:'IBM Plex Mono',monospace; font-size:12.5px; font-weight:600; }
+    .pill { font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.04em; text-transform:uppercase; padding:2px 7px; border-radius:20px; background:#E6EAEF; color:#545A68; }
+    table { border-collapse:collapse; width:100%; font-variant-numeric:tabular-nums; }
+    th, td { padding:7px 11px 7px 0; text-align:right; font-family:'IBM Plex Mono',monospace; font-size:12.5px; }
+    th { font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:#868D9C; font-weight:500; border-bottom:1px solid #C3C9D3; white-space:nowrap; }
+    td { border-bottom:1px solid #DBDFE6; color:#545A68; }
+    th:first-child, td:first-child { text-align:left; padding-left:0; }
+  </style>
+</helmet>
+
+<div style="width:1240px; background:#EDEFF3; color:#161920; font-size:15px; line-height:1.55;">
+<div style="max-width:1160px; margin:0 auto; padding:34px 22px 72px; display:flex; flex-direction:column; gap:22px;">
+
+  <div style="border-bottom:1px solid #DBDFE6; padding-bottom:20px; display:flex; flex-direction:column;">
+    <div class="eyb">Introducción a sistemas operativos</div>
+    <h1 style="font-size:31px; font-weight:600; letter-spacing:-.015em; margin:0; text-wrap:balance;">Planificador paso a paso</h1>
+    <p style="margin:8px 0 0; color:#545A68;">Definí un lote de procesos con sus ráfagas de CPU y sus pedidos de E/S a dispositivos concretos, elegí una política y avanzá el reloj de a una unidad para ver qué decide el planificador en cada instante y por qué.</p>
+  </div>
+
+  <div style="display:grid; grid-template-columns:1.15fr 1fr; gap:18px; align-items:start;">
+    <div class="pnl" style="display:flex; flex-direction:column;">
+      <div class="eyb" style="margin-bottom:12px;">Lote de procesos</div>
+      <div style="display:flex; flex-direction:column; gap:9px;">
+
+        <div style="border:1px solid #DBDFE6; border-radius:9px; padding:10px 12px; background:#F4F6F8; display:flex; flex-direction:column; gap:9px;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span class="mono" style="display:flex; align-items:center; gap:7px; font-size:13.5px; font-weight:600;"><i style="width:11px; height:11px; border-radius:3px; background:#7F77DD;"></i>P1</span>
+            <span style="display:flex; align-items:center; gap:6px; font-size:12.5px; color:#545A68;">llega en <span class="inp" style="width:56px; padding:3px 6px; text-align:center;">0</span></span>
+            <span style="flex:1;"></span><span style="color:#868D9C; font-size:16px; line-height:1; padding:2px 6px;">&#215;</span>
+          </div>
+          <div style="display:flex; flex-wrap:wrap; gap:5px; align-items:center;">
+            <span class="fase" style="border:1px solid #C3C9D3; color:#161920;">CPU <span class="fnum">3</span></span>
+            <span style="color:#868D9C; font-size:10px;">&#8594;</span>
+            <span class="fase" style="border:1px dashed #C3C9D3; color:#545A68;"><span style="display:inline-flex; align-items:center; gap:3px; padding:1px 3px; max-width:104px; background:#F4F6F8; border:1px solid #C3C9D3; border-radius:6px; font-family:'IBM Plex Sans',sans-serif;">Disco<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#868D9C" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg></span><span class="fnum">5</span></span>
+            <span style="color:#868D9C; font-size:10px;">&#8594;</span>
+            <span class="fase" style="border:1px solid #C3C9D3; color:#161920;">CPU <span class="fnum">2</span></span>
+            <span style="display:flex; gap:5px; margin-left:4px;">
+              <span style="font-size:11.5px; font-weight:500; color:#545A68; border:1px solid #C3C9D3; border-radius:20px; padding:2px 10px;">+ E/S</span>
+              <span style="font-size:11.5px; font-weight:500; color:#545A68; border:1px solid #C3C9D3; border-radius:20px; padding:2px 10px;">&#8722; E/S</span>
+            </span>
+          </div>
+        </div>
+
+        <div style="border:1px solid #DBDFE6; border-radius:9px; padding:10px 12px; background:#F4F6F8; display:flex; flex-direction:column; gap:9px;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span class="mono" style="display:flex; align-items:center; gap:7px; font-size:13.5px; font-weight:600;"><i style="width:11px; height:11px; border-radius:3px; background:#1D9E75;"></i>P2</span>
+            <span style="display:flex; align-items:center; gap:6px; font-size:12.5px; color:#545A68;">llega en <span class="inp" style="width:56px; padding:3px 6px; text-align:center;">1</span></span>
+            <span style="flex:1;"></span><span style="color:#868D9C; font-size:16px; line-height:1; padding:2px 6px;">&#215;</span>
+          </div>
+          <div style="display:flex; flex-wrap:wrap; gap:5px; align-items:center;">
+            <span class="fase" style="border:1px solid #C3C9D3; color:#161920;">CPU <span class="fnum">2</span></span>
+            <span style="color:#868D9C; font-size:10px;">&#8594;</span>
+            <span class="fase" style="border:1px dashed #C3C9D3; color:#545A68;"><span style="display:inline-flex; align-items:center; gap:3px; padding:1px 3px; max-width:104px; background:#F4F6F8; border:1px solid #C3C9D3; border-radius:6px; font-family:'IBM Plex Sans',sans-serif;">Disco<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#868D9C" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg></span><span class="fnum">6</span></span>
+            <span style="color:#868D9C; font-size:10px;">&#8594;</span>
+            <span class="fase" style="border:1px solid #C3C9D3; color:#161920;">CPU <span class="fnum">3</span></span>
+            <span style="display:flex; gap:5px; margin-left:4px;">
+              <span style="font-size:11.5px; font-weight:500; color:#545A68; border:1px solid #C3C9D3; border-radius:20px; padding:2px 10px;">+ E/S</span>
+              <span style="font-size:11.5px; font-weight:500; color:#545A68; border:1px solid #C3C9D3; border-radius:20px; padding:2px 10px;">&#8722; E/S</span>
+            </span>
+          </div>
+        </div>
+
+        <div style="border:1px solid #DBDFE6; border-radius:9px; padding:10px 12px; background:#F4F6F8; display:flex; flex-direction:column; gap:9px;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span class="mono" style="display:flex; align-items:center; gap:7px; font-size:13.5px; font-weight:600;"><i style="width:11px; height:11px; border-radius:3px; background:#D85A30;"></i>P3</span>
+            <span style="display:flex; align-items:center; gap:6px; font-size:12.5px; color:#545A68;">llega en <span class="inp" style="width:56px; padding:3px 6px; text-align:center;">9</span></span>
+            <span style="flex:1;"></span><span style="color:#868D9C; font-size:16px; line-height:1; padding:2px 6px;">&#215;</span>
+          </div>
+          <div style="display:flex; flex-wrap:wrap; gap:5px; align-items:center;">
+            <span class="fase" style="border:1px solid #C3C9D3; color:#161920;">CPU <span class="fnum">4</span></span>
+            <span style="color:#868D9C; font-size:10px;">&#8594;</span>
+            <span class="fase" style="border:1px dashed #C3C9D3; color:#545A68;"><span style="display:inline-flex; align-items:center; gap:3px; padding:1px 3px; max-width:104px; background:#F4F6F8; border:1px solid #C3C9D3; border-radius:6px; font-family:'IBM Plex Sans',sans-serif;">Impresora<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#868D9C" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg></span><span class="fnum">3</span></span>
+            <span style="color:#868D9C; font-size:10px;">&#8594;</span>
+            <span class="fase" style="border:1px solid #C3C9D3; color:#161920;">CPU <span class="fnum">2</span></span>
+            <span style="display:flex; gap:5px; margin-left:4px;">
+              <span style="font-size:11.5px; font-weight:500; color:#545A68; border:1px solid #C3C9D3; border-radius:20px; padding:2px 10px;">+ E/S</span>
+              <span style="font-size:11.5px; font-weight:500; color:#545A68; border:1px solid #C3C9D3; border-radius:20px; padding:2px 10px;">&#8722; E/S</span>
+            </span>
+          </div>
+        </div>
+
+        <div style="border:1px solid #DBDFE6; border-radius:9px; padding:10px 12px; background:#F4F6F8; display:flex; flex-direction:column; gap:9px;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span class="mono" style="display:flex; align-items:center; gap:7px; font-size:13.5px; font-weight:600;"><i style="width:11px; height:11px; border-radius:3px; background:#378ADD;"></i>P4</span>
+            <span style="display:flex; align-items:center; gap:6px; font-size:12.5px; color:#545A68;">llega en <span class="inp" style="width:56px; padding:3px 6px; text-align:center;">16</span></span>
+            <span style="flex:1;"></span><span style="color:#868D9C; font-size:16px; line-height:1; padding:2px 6px;">&#215;</span>
+          </div>
+          <div style="display:flex; flex-wrap:wrap; gap:5px; align-items:center;">
+            <span class="fase" style="border:1px solid #C3C9D3; color:#161920;">CPU <span class="fnum">3</span></span>
+            <span style="display:flex; gap:5px; margin-left:4px;">
+              <span style="font-size:11.5px; font-weight:500; color:#545A68; border:1px solid #C3C9D3; border-radius:20px; padding:2px 10px;">+ E/S</span>
+              <span style="font-size:11.5px; font-weight:500; color:#545A68; border:1px solid #C3C9D3; border-radius:20px; padding:2px 10px; opacity:.35;">&#8722; E/S</span>
+            </span>
+          </div>
+        </div>
+
+      </div>
+      <div style="display:flex; gap:8px; margin-top:13px;">
+        <span class="btn">Agregar proceso</span>
+        <span class="btn">Lote con E/S</span>
+        <span class="btn">Lote con CPU disputada</span>
+      </div>
+      <p style="margin:11px 0 0; font-size:12.5px; color:#868D9C; line-height:1.55;">Cada proceso es una secuencia que empieza y termina usando la CPU. <b style="font-weight:500;">Agregar E/S</b> suma un pedido a un dispositivo y la ráfaga de CPU que viene después, así la secuencia siempre queda bien formada.</p>
+    </div>
+
+    <div style="display:flex; flex-direction:column; gap:18px;">
+      <div class="pnl" style="display:flex; flex-direction:column; gap:12px;">
+        <div class="eyb">Política de planificación</div>
+        <div style="display:flex; flex-direction:column; gap:2px;">
+          <span style="display:flex; gap:9px; align-items:baseline; padding:6px 8px;"><i style="width:13px; height:13px; border-radius:50%; border:1px solid #868D9C; background:#FFFFFF; flex:none;"></i><span><b style="font-weight:500; font-size:13.5px;">FCFS</b> <span style="font-size:12px; color:#868D9C;">&#8212; Por orden de llegada, sin expropiación</span></span></span>
+          <span style="display:flex; gap:9px; align-items:baseline; padding:6px 8px;"><i style="width:13px; height:13px; border-radius:50%; border:1px solid #868D9C; background:#FFFFFF; flex:none;"></i><span><b style="font-weight:500; font-size:13.5px;">SJF</b> <span style="font-size:12px; color:#868D9C;">&#8212; La ráfaga más corta primero, sin expropiación</span></span></span>
+          <span style="display:flex; gap:9px; align-items:baseline; padding:6px 8px;"><i style="width:13px; height:13px; border-radius:50%; border:1px solid #868D9C; background:#FFFFFF; flex:none;"></i><span><b style="font-weight:500; font-size:13.5px;">SRTF</b> <span style="font-size:12px; color:#868D9C;">&#8212; Menor tiempo restante, con expropiación</span></span></span>
+          <span style="display:flex; gap:9px; align-items:baseline; padding:6px 8px;"><i style="width:13px; height:13px; border-radius:50%; border:4px solid #0B57D0; background:#FFFFFF; flex:none;"></i><span><b style="font-weight:500; font-size:13.5px;">RR</b> <span style="font-size:12px; color:#868D9C;">&#8212; Turno rotativo con quantum fijo</span></span></span>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <span style="font-size:13px; color:#545A68;">Quantum (unidades de tiempo)</span>
+          <span class="inp" style="display:block;">2</span>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:5px;">
+          <span style="font-size:13px; color:#545A68;">Si en el mismo instante llega un proceso y otro agota su quantum</span>
+          <span class="inp" style="display:flex; align-items:center; justify-content:space-between; font-family:'IBM Plex Sans',sans-serif;">Entra primero el que llega<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#868D9C" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span>
+        </div>
+      </div>
+
+      <div class="pnl" style="display:flex; flex-direction:column;">
+        <div class="eyb" style="margin-bottom:12px;">Dispositivos de E/S</div>
+        <div style="display:flex; flex-direction:column; gap:7px;">
+          <span style="display:flex; align-items:center; gap:8px;"><span class="mono" style="font-size:11px; color:#868D9C; width:16px;">1</span><span class="inp" style="flex:1;">Disco</span><span style="color:#868D9C; font-size:16px;">&#215;</span></span>
+          <span style="display:flex; align-items:center; gap:8px;"><span class="mono" style="font-size:11px; color:#868D9C; width:16px;">2</span><span class="inp" style="flex:1;">Impresora</span><span style="color:#868D9C; font-size:16px;">&#215;</span></span>
+        </div>
+        <span class="btn" style="align-self:flex-start; margin-top:11px;">Agregar dispositivo</span>
+        <p style="margin:11px 0 0; font-size:12.5px; color:#868D9C; line-height:1.55;">Cada dispositivo atiende a un proceso por vez, en orden FIFO. Si está ocupado, el que lo pide queda en su cola: sigue bloqueado, pero todavía no lo está usando.</p>
+      </div>
+    </div>
+  </div>
+
+  <div style="background:#FFFFFF; border:1px solid #C3C9D3; border-radius:10px; padding:16px 18px; display:flex; flex-direction:column;">
+    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding-bottom:14px; margin-bottom:14px; border-bottom:1px solid #DBDFE6;">
+      <span class="mono" style="font-size:23px; font-weight:600; letter-spacing:-.02em; min-width:74px;">t=13</span>
+      <span class="btn" style="width:38px; padding:7px 0; text-align:center;">|&#9664;</span>
+      <span class="btn" style="width:38px; padding:7px 0; text-align:center;">&#9664;</span>
+      <span class="btn" style="background:#161920; color:#FFFFFF; border-color:#161920; min-width:112px; text-align:center;">&#9654; Reproducir</span>
+      <span class="btn" style="width:38px; padding:7px 0; text-align:center;">&#9654;</span>
+      <span class="btn" style="width:38px; padding:7px 0; text-align:center;">&#9654;|</span>
+      <span style="flex:1; min-width:130px; height:16px; display:flex; align-items:center; position:relative;"><span style="position:absolute; left:0; right:0; height:4px; border-radius:2px; background:#DBDFE6;"></span><span style="position:absolute; left:0; width:56%; height:4px; border-radius:2px; background:#161920;"></span><span style="position:absolute; left:56%; width:13px; height:13px; border-radius:50%; background:#161920; transform:translateX(-50%);"></span></span>
+      <span class="inp" style="width:auto; font-family:'IBM Plex Sans',sans-serif; display:flex; align-items:center; gap:6px;">Normal<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#868D9C" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:12px;">
+      <span style="display:inline-flex; border:1px solid #C3C9D3; border-radius:8px; overflow:hidden;">
+        <span style="font-size:12.5px; font-weight:500; padding:6px 13px; background:#161920; color:#FFFFFF;">Un algoritmo, paso a paso</span>
+        <span style="font-size:12.5px; font-weight:500; padding:6px 13px; background:#FFFFFF; color:#545A68; border-left:1px solid #C3C9D3;">Comparar los cuatro</span>
+      </span>
+      <span style="display:flex; gap:13px; flex-wrap:wrap; font-size:11.5px; color:#545A68;">
+        <span style="display:flex; align-items:center; gap:5px;"><i style="width:16px; height:12px; border-radius:2px; background:#868D9C; border:1px solid #868D9C;"></i>usando la CPU</span>
+        <span style="display:flex; align-items:center; gap:5px;"><i style="width:16px; height:12px; border-radius:2px; background:#E6EAEF; border:1px solid #C3C9D3; background-image:repeating-linear-gradient(45deg,#868D9C 0 2px,transparent 2px 5px);"></i>usando E/S</span>
+        <span style="display:flex; align-items:center; gap:5px;"><i style="width:16px; height:12px; border-radius:2px; background:#E6EAEF; border:1px solid #C3C9D3; background-image:repeating-linear-gradient(to right,#868D9C 0 1px,transparent 1px 4px);"></i>esperando el dispositivo</span>
+        <span style="display:flex; align-items:center; gap:5px;"><i style="width:16px; height:12px; border-radius:2px; background:#F4F6F8; border:1px solid #C3C9D3;"></i>sin recursos: espera la CPU</span>
+      </span>
+    </div>
+
+    <div style="position:relative; display:flex; flex-direction:column; gap:3px;">
+      <div style="display:flex; align-items:center; gap:8px;"><span class="lab"></span><span style="position:relative; height:16px; width:782px; flex:none; margin-bottom:2px;">
+        <span class="tick" style="left:0px;">0</span><span class="tick" style="left:34px;">1</span><span class="tick" style="left:68px;">2</span><span class="tick" style="left:102px;">3</span><span class="tick" style="left:136px;">4</span><span class="tick" style="left:170px;">5</span><span class="tick" style="left:204px;">6</span><span class="tick" style="left:238px;">7</span><span class="tick" style="left:272px;">8</span><span class="tick" style="left:306px;">9</span><span class="tick" style="left:340px;">10</span><span class="tick" style="left:374px;">11</span><span class="tick" style="left:408px;">12</span><span class="tick" style="left:442px;">13</span><span class="tick" style="left:476px;">14</span><span class="tick" style="left:510px;">15</span><span class="tick" style="left:544px;">16</span><span class="tick" style="left:578px;">17</span><span class="tick" style="left:612px;">18</span><span class="tick" style="left:646px;">19</span><span class="tick" style="left:680px;">20</span><span class="tick" style="left:714px;">21</span><span class="tick" style="left:748px;">22</span><span class="tick" style="left:782px;">23</span>
+      </span></div>
+
+      <div style="display:flex; align-items:center; gap:8px;"><span class="lab"><b style="color:#161920; font-weight:500; font-size:11.5px;">CPU</b></span><span class="trk" style="height:26px; width:782px;">
+        <span class="blk rec" style="left:0px; width:68px; background:#CECBF6; color:#26215C;">P1</span>
+        <span class="blk rec" style="left:68px; width:68px; background:#9FE1CB; color:#04342C;">P2</span>
+        <span class="blk rec" style="left:136px; width:34px; background:#CECBF6; color:#26215C;">P1</span>
+        <span class="blk idle" style="left:170px; width:136px;"></span>
+        <span class="blk rec" style="left:306px; width:68px; background:#F5C4B3; color:#4A1B0C;">P3</span>
+        <span class="blk rec" style="left:374px; width:68px; background:#9FE1CB; color:#04342C;">P2</span>
+      </span></div>
+
+      <div style="display:flex; align-items:center; gap:8px;"><span class="lab"><b style="color:#161920; font-weight:500; font-size:11.5px;">Disco</b></span><span class="trk" style="height:26px; width:782px;">
+        <span class="blk idle" style="left:0px; width:136px;"></span>
+        <span class="blk rec" style="left:136px; width:204px; background:#9FE1CB; color:#04342C;">P2</span>
+        <span class="blk rec" style="left:340px; width:102px; background:#CECBF6; color:#26215C;">P1</span>
+      </span></div>
+
+      <div style="display:flex; align-items:center; gap:8px;"><span class="lab"><b style="color:#161920; font-weight:500; font-size:11.5px;">Impresora</b></span><span class="trk" style="height:26px; width:782px;">
+        <span class="blk idle" style="left:0px; width:442px;"></span>
+      </span></div>
+
+      <div style="display:flex; align-items:center; gap:8px;"><span class="lab"></span><span style="height:1px; background:#DBDFE6; width:782px; flex:none; margin:4px 0;"></span></div>
+
+      <div style="display:flex; align-items:center; gap:8px;"><span class="lab"><b style="color:#161920; font-weight:500; font-size:11.5px;">P1</b></span><span class="trk" style="width:782px;">
+        <span class="blk" style="left:0px; width:68px; background:#7F77DD;"></span>
+        <span class="blk" style="left:136px; width:34px; background:#7F77DD;"></span>
+        <span class="blk" style="left:170px; width:170px; background:#EEEDFE; background-image:repeating-linear-gradient(to right,#7F77DD 0 1px,transparent 1px 5px);"></span>
+        <span class="blk" style="left:340px; width:102px; background:#EEEDFE; background-image:repeating-linear-gradient(45deg,#7F77DD 0 2px,transparent 2px 6px);"></span>
+      </span></div>
+
+      <div style="display:flex; align-items:center; gap:8px;"><span class="lab"><b style="color:#161920; font-weight:500; font-size:11.5px;">P2</b></span><span class="trk" style="width:782px;">
+        <span class="blk" style="left:68px; width:68px; background:#1D9E75;"></span>
+        <span class="blk" style="left:136px; width:204px; background:#E1F5EE; background-image:repeating-linear-gradient(45deg,#1D9E75 0 2px,transparent 2px 6px);"></span>
+        <span class="blk" style="left:374px; width:68px; background:#1D9E75;"></span>
+      </span></div>
+
+      <div style="display:flex; align-items:center; gap:8px;"><span class="lab"><b style="color:#161920; font-weight:500; font-size:11.5px;">P3</b></span><span class="trk" style="width:782px;">
+        <span class="blk" style="left:306px; width:68px; background:#D85A30;"></span>
+      </span></div>
+
+      <div style="display:flex; align-items:center; gap:8px;"><span class="lab"><b style="color:#161920; font-weight:500; font-size:11.5px;">P4</b></span><span class="trk" style="width:782px;"></span></div>
+
+      <span style="position:absolute; top:0; bottom:0; left:538px; width:2px; background:#161920; border-radius:1px;"></span>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:18px; align-items:start;">
+    <div class="pnl" style="grid-column:1/-1; display:flex; flex-direction:column; gap:12px;">
+      <div class="eyb">Cola de listos</div>
+      <div style="display:flex; align-items:center; gap:7px; flex-wrap:wrap; min-height:32px;">
+        <span class="mono" style="font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:#868D9C;">cabeza &#8594;</span>
+        <span class="chip" style="background:#9FE1CB; color:#04342C;">P2 <em style="font-style:normal; font-weight:400; opacity:.82; font-size:11px;">restan 1</em></span>
+      </div>
+    </div>
+
+    <div class="pnl" style="display:flex; flex-direction:column; gap:12px;">
+      <div class="eyb">Dispositivos</div>
+      <div style="display:flex; flex-direction:column;">
+        <div style="border-bottom:1px solid #DBDFE6; padding:0 0 9px; display:flex; flex-direction:column; gap:5px;">
+          <span class="mono" style="font-size:12px; font-weight:600;">Disco<span style="font-weight:400; color:#868D9C; font-size:11px; text-transform:uppercase; letter-spacing:.06em; margin-left:6px;">atendiendo</span></span>
+          <span style="display:flex; gap:7px;"><span class="chip" style="background:#CECBF6; color:#26215C;">P1 <em style="font-style:normal; font-weight:400; opacity:.82; font-size:11px;">restan 2</em></span></span>
+        </div>
+        <div style="padding:9px 0 0; display:flex; flex-direction:column; gap:5px;">
+          <span class="mono" style="font-size:12px; font-weight:600;">Impresora<span style="font-weight:400; color:#868D9C; font-size:11px; text-transform:uppercase; letter-spacing:.06em; margin-left:6px;">libre</span></span>
+          <span style="color:#868D9C; font-size:13px; font-style:italic;">Sin uso.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="pnl" style="display:flex; flex-direction:column; gap:12px;">
+      <div class="eyb">Estado de cada proceso</div>
+      <div style="display:flex; flex-direction:column;">
+        <span style="display:grid; grid-template-columns:auto auto auto 1fr; gap:9px; align-items:center; padding:6px 0; border-bottom:1px solid #DBDFE6;"><i style="width:11px; height:11px; border-radius:3px; background:#7F77DD;"></i><span class="mono" style="font-size:12.5px; font-weight:500;">P1</span><span class="pill">usando E/S</span><span class="mono" style="font-size:11.5px; color:#868D9C; text-align:right;">Disco &#183; restan 2</span></span>
+        <span style="display:grid; grid-template-columns:auto auto auto 1fr; gap:9px; align-items:center; padding:6px 0; border-bottom:1px solid #DBDFE6;"><i style="width:11px; height:11px; border-radius:3px; background:#1D9E75;"></i><span class="mono" style="font-size:12.5px; font-weight:500;">P2</span><span class="pill" style="background:#E1F5EE; color:#04342C;">listo</span><span class="mono" style="font-size:11.5px; color:#868D9C; text-align:right;">CPU 2 &#183; restan 1</span></span>
+        <span style="display:grid; grid-template-columns:auto auto auto 1fr; gap:9px; align-items:center; padding:6px 0; border-bottom:1px solid #DBDFE6;"><i style="width:11px; height:11px; border-radius:3px; background:#D85A30;"></i><span class="mono" style="font-size:12.5px; font-weight:500;">P3</span><span class="pill" style="background:#D85A30; color:#FFFFFF;">ejecutando</span><span class="mono" style="font-size:11.5px; color:#868D9C; text-align:right;">CPU 1 &#183; restan 2</span></span>
+        <span style="display:grid; grid-template-columns:auto auto auto 1fr; gap:9px; align-items:center; padding:6px 0;"><i style="width:11px; height:11px; border-radius:3px; background:#378ADD;"></i><span class="mono" style="font-size:12.5px; font-weight:500;">P4</span><span class="pill">nuevo</span><span></span></span>
+      </div>
+    </div>
+
+    <div class="pnl" style="grid-column:1/-1; display:flex; flex-direction:column; gap:12px;">
+      <div class="eyb">Qué pasa en este instante</div>
+      <div style="display:flex; flex-direction:column; gap:9px;">
+        <span style="display:flex; gap:9px; font-size:13.5px; line-height:1.45; color:#545A68;"><span class="mono" style="font-size:10.5px; font-weight:500; background:#E6EAEF; color:#545A68; border-radius:4px; padding:2px 6px; height:fit-content; flex:none; margin-top:2px;">t=13</span><span>P2 agota su quantum y vuelve al final de la cola de listos; le restan 1 unidades de CPU</span></span>
+        <span style="display:flex; gap:9px; font-size:13.5px; line-height:1.45; color:#545A68;"><span class="mono" style="font-size:10.5px; font-weight:500; background:#E6EAEF; color:#545A68; border-radius:4px; padding:2px 6px; height:fit-content; flex:none; margin-top:2px;">t=13</span><span>Se despacha P3 por un quantum de 2: está a la cabeza de la cola circular</span></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="pnl" style="display:flex; flex-direction:column;">
+    <div class="eyb" style="margin-bottom:12px;">Métricas del lote</div>
+    <table>
+      <thead><tr><th>Proceso</th><th>Llegada</th><th>CPU</th><th>E/S</th><th>Esp. CPU</th><th>Esp. E/S</th><th>Fin</th><th>Retorno</th><th>Respuesta</th></tr></thead>
+      <tbody>
+        <tr><td style="color:#161920; font-weight:500;">P1</td><td>0</td><td>5</td><td>5</td><td>3</td><td>5</td><td>18</td><td>18</td><td>0</td></tr>
+        <tr><td style="color:#161920; font-weight:500;">P2</td><td>1</td><td>5</td><td>6</td><td>4</td><td>0</td><td>16</td><td>15</td><td>1</td></tr>
+        <tr><td style="color:#161920; font-weight:500;">P3</td><td>9</td><td>6</td><td>3</td><td>4</td><td>0</td><td>22</td><td>13</td><td>0</td></tr>
+        <tr><td style="color:#161920; font-weight:500;">P4</td><td>16</td><td>3</td><td>0</td><td>4</td><td>0</td><td>23</td><td>7</td><td>2</td></tr>
+        <tr><td style="border-bottom:none; color:#161920; font-weight:600; padding-top:10px;">Promedio</td><td style="border-bottom:none; padding-top:10px;"></td><td style="border-bottom:none; padding-top:10px;"></td><td style="border-bottom:none; padding-top:10px;"></td><td style="border-bottom:none; color:#161920; font-weight:600; padding-top:10px;">3.75</td><td style="border-bottom:none; color:#161920; font-weight:600; padding-top:10px;">1.25</td><td style="border-bottom:none; padding-top:10px;"></td><td style="border-bottom:none; color:#161920; font-weight:600; padding-top:10px;">13.25</td><td style="border-bottom:none; color:#161920; font-weight:600; padding-top:10px;">0.75</td></tr>
+      </tbody>
+    </table>
+    <div style="display:flex; gap:24px; flex-wrap:wrap; margin-top:14px; padding-top:14px; border-top:1px solid #DBDFE6;">
+      <span style="display:flex; flex-direction:column; gap:1px;"><span class="mono" style="font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:#868D9C;">Tiempo total</span><span class="mono" style="font-size:17px; font-weight:600;">23</span></span>
+      <span style="display:flex; flex-direction:column; gap:1px;"><span class="mono" style="font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:#868D9C;">Uso de CPU</span><span class="mono" style="font-size:17px; font-weight:600;">83%</span></span>
+      <span style="display:flex; flex-direction:column; gap:1px;"><span class="mono" style="font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:#868D9C;">Uso de Disco</span><span class="mono" style="font-size:17px; font-weight:600;">48%</span></span>
+      <span style="display:flex; flex-direction:column; gap:1px;"><span class="mono" style="font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:#868D9C;">Uso de Impresora</span><span class="mono" style="font-size:17px; font-weight:600;">13%</span></span>
+      <span style="display:flex; flex-direction:column; gap:1px;"><span class="mono" style="font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:#868D9C;">Cambios de contexto</span><span class="mono" style="font-size:17px; font-weight:600;">10</span></span>
+    </div>
+    <div style="border-top:1px solid #DBDFE6; margin-top:4px; padding-top:14px;"><span style="font-size:13.5px; font-weight:500; color:#545A68;">&#9656; Convenciones que usa este simulador</span></div>
+  </div>
+
+  <div class="pnl" style="display:flex; flex-direction:column; gap:10px;">
+    <div class="eyb" style="margin-bottom:2px;">Compartir este ejercicio</div>
+    <p style="margin:0; font-size:12.5px; color:#868D9C;">Copiá el código para pasarle el lote a otra persona, o pegá uno que te hayan dado y cargalo.</p>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <span class="inp" style="flex:1; font-size:11.5px; color:#545A68; overflow:hidden; white-space:nowrap;">JTdCJTIydiUyMiUzQTIlMkMlMjJkJTIyJTNBJTVCJTIyRGlzY28lMjIlMkMlMjJJbXByZXNvcmE</span>
+      <span class="btn">Copiar</span>
+      <span class="btn">Cargar un código</span>
+    </div>
+  </div>
+
+  <div style="color:#868D9C; font-size:12.5px; border-top:1px solid #DBDFE6; padding-top:16px; line-height:1.9;">
+    Atajos de teclado: <span class="mono" style="font-size:11px; background:#E6EAEF; border:1px solid #C3C9D3; border-radius:4px; padding:1px 5px; color:#545A68;">&#8592;</span> <span class="mono" style="font-size:11px; background:#E6EAEF; border:1px solid #C3C9D3; border-radius:4px; padding:1px 5px; color:#545A68;">&#8594;</span> para moverte un paso, <span class="mono" style="font-size:11px; background:#E6EAEF; border:1px solid #C3C9D3; border-radius:4px; padding:1px 5px; color:#545A68;">espacio</span> para reproducir o pausar, <span class="mono" style="font-size:11px; background:#E6EAEF; border:1px solid #C3C9D3; border-radius:4px; padding:1px 5px; color:#545A68;">inicio</span> y <span class="mono" style="font-size:11px; background:#E6EAEF; border:1px solid #C3C9D3; border-radius:4px; padding:1px 5px; color:#545A68;">fin</span> para ir a los extremos.<br>Versión en línea: <a href="https://levicot.github.io/iso-planificacion-cpu/">levicot.github.io/iso-planificacion-cpu</a>
+  </div>
+
+</div>
+</div>
+</x-dc>
+</body>
+</html>

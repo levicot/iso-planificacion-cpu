@@ -1,0 +1,133 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'IBM Plex Sans', system-ui, sans-serif; }
+    a { color: #545A68; } a:hover { color: #161920; }
+    .eyb { font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:500; letter-spacing:.13em; text-transform:uppercase; color:#868D9C; }
+    .btn { font-family:'IBM Plex Sans',sans-serif; font-size:13px; font-weight:500; color:#161920; background:#FFFFFF; border:1px solid #C3C9D3; border-radius:7px; padding:7px 12px; }
+    .inp { font-family:'IBM Plex Mono',monospace; font-size:13px; color:#161920; background:#F4F6F8; border:1px solid #C3C9D3; border-radius:6px; padding:6px 8px; }
+    .mono { font-family:'IBM Plex Mono',monospace; font-variant-numeric:tabular-nums; }
+    .labc { width:88px; flex:none; text-align:right; line-height:1.25; }
+    .labc b { display:block; font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:#161920; font-weight:500; }
+    .labc span { display:block; font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:#868D9C; }
+    .trk { position:relative; height:26px; background:#F4F6F8; border-radius:3px; flex:none; }
+    .blk { position:absolute; top:0; bottom:0; border-radius:2px; font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:600; display:flex; align-items:center; justify-content:center; }
+    .idle { background:transparent; border-bottom:2px dotted #C3C9D3; top:auto; height:0; bottom:12px; border-radius:0; }
+    .tick { position:absolute; top:0; transform:translateX(-50%); font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:#868D9C; }
+    table { border-collapse:collapse; width:100%; font-variant-numeric:tabular-nums; }
+    th, td { padding:7px 11px 7px 0; text-align:right; font-family:'IBM Plex Mono',monospace; font-size:12.5px; }
+    th { font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:#868D9C; font-weight:500; border-bottom:1px solid #C3C9D3; white-space:nowrap; }
+    td { border-bottom:1px solid #DBDFE6; color:#545A68; }
+    th:first-child, td:first-child { text-align:left; padding-left:0; }
+    .mej { color:#161920; font-weight:500; background:#E6EAEF; border-radius:3px; }
+  </style>
+</helmet>
+
+<div style="width:1240px; background:#EDEFF3; color:#161920; font-size:15px; line-height:1.55;">
+<div style="max-width:1160px; margin:0 auto; padding:34px 22px 72px; display:flex; flex-direction:column; gap:22px;">
+
+  <div style="background:#FFFFFF; border:1px solid #C3C9D3; border-radius:10px; padding:16px 18px; display:flex; flex-direction:column;">
+    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding-bottom:14px; margin-bottom:14px; border-bottom:1px solid #DBDFE6;">
+      <span class="mono" style="font-size:23px; font-weight:600; letter-spacing:-.02em; min-width:74px;">t=23 <span style="font-size:12px; font-weight:400; color:#868D9C; letter-spacing:0;">fin</span></span>
+      <span class="btn" style="width:38px; padding:7px 0; text-align:center;">|&#9664;</span>
+      <span class="btn" style="width:38px; padding:7px 0; text-align:center;">&#9664;</span>
+      <span class="btn" style="background:#161920; color:#FFFFFF; border-color:#161920; min-width:112px; text-align:center;">&#9654; Reproducir</span>
+      <span class="btn" style="width:38px; padding:7px 0; text-align:center;">&#9654;</span>
+      <span class="btn" style="width:38px; padding:7px 0; text-align:center;">&#9654;|</span>
+      <span style="flex:1; min-width:130px; height:16px; display:flex; align-items:center; position:relative;"><span style="position:absolute; left:0; right:0; height:4px; border-radius:2px; background:#161920;"></span><span style="position:absolute; right:0; width:13px; height:13px; border-radius:50%; background:#161920;"></span></span>
+      <span class="inp" style="width:auto; font-family:'IBM Plex Sans',sans-serif; display:flex; align-items:center; gap:6px;">Normal<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#868D9C" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:12px;">
+      <span style="display:inline-flex; border:1px solid #C3C9D3; border-radius:8px; overflow:hidden;">
+        <span style="font-size:12.5px; font-weight:500; padding:6px 13px; background:#FFFFFF; color:#545A68;">Un algoritmo, paso a paso</span>
+        <span style="font-size:12.5px; font-weight:500; padding:6px 13px; background:#161920; color:#FFFFFF; border-left:1px solid #C3C9D3;">Comparar los cuatro</span>
+      </span>
+      <span style="font-size:11.5px; color:#545A68;">Cada bloque es el proceso que ocupa la CPU en ese instante</span>
+    </div>
+
+    <div style="position:relative; display:flex; flex-direction:column; gap:3px;">
+      <div style="display:flex; align-items:center; gap:8px;"><span class="labc"></span><span style="position:relative; height:16px; width:782px; flex:none; margin-bottom:2px;">
+        <span class="tick" style="left:0px;">0</span><span class="tick" style="left:34px;">1</span><span class="tick" style="left:68px;">2</span><span class="tick" style="left:102px;">3</span><span class="tick" style="left:136px;">4</span><span class="tick" style="left:170px;">5</span><span class="tick" style="left:204px;">6</span><span class="tick" style="left:238px;">7</span><span class="tick" style="left:272px;">8</span><span class="tick" style="left:306px;">9</span><span class="tick" style="left:340px;">10</span><span class="tick" style="left:374px;">11</span><span class="tick" style="left:408px;">12</span><span class="tick" style="left:442px;">13</span><span class="tick" style="left:476px;">14</span><span class="tick" style="left:510px;">15</span><span class="tick" style="left:544px;">16</span><span class="tick" style="left:578px;">17</span><span class="tick" style="left:612px;">18</span><span class="tick" style="left:646px;">19</span><span class="tick" style="left:680px;">20</span><span class="tick" style="left:714px;">21</span><span class="tick" style="left:748px;">22</span><span class="tick" style="left:782px;">23</span>
+      </span></div>
+
+      <div style="display:flex; align-items:center; gap:8px;"><span class="labc"><b>FCFS</b><span>fin 22</span></span><span class="trk" style="width:748px;">
+        <span class="blk" style="left:0px; width:102px; background:#CECBF6; color:#26215C;">P1</span>
+        <span class="blk" style="left:102px; width:68px; background:#9FE1CB; color:#04342C;">P2</span>
+        <span class="blk idle" style="left:170px; width:102px;"></span>
+        <span class="blk" style="left:272px; width:68px; background:#CECBF6; color:#26215C;">P1</span>
+        <span class="blk" style="left:340px; width:136px; background:#F5C4B3; color:#4A1B0C;">P3</span>
+        <span class="blk" style="left:476px; width:102px; background:#9FE1CB; color:#04342C;">P2</span>
+        <span class="blk" style="left:578px; width:102px; background:#B5D4F4; color:#042C53;">P4</span>
+        <span class="blk" style="left:680px; width:68px; background:#F5C4B3; color:#4A1B0C;">P3</span>
+      </span></div>
+
+      <div style="display:flex; align-items:center; gap:8px;"><span class="labc"><b>SJF</b><span>fin 22</span></span><span class="trk" style="width:748px;">
+        <span class="blk" style="left:0px; width:102px; background:#CECBF6; color:#26215C;">P1</span>
+        <span class="blk" style="left:102px; width:68px; background:#9FE1CB; color:#04342C;">P2</span>
+        <span class="blk idle" style="left:170px; width:102px;"></span>
+        <span class="blk" style="left:272px; width:68px; background:#CECBF6; color:#26215C;">P1</span>
+        <span class="blk" style="left:340px; width:136px; background:#F5C4B3; color:#4A1B0C;">P3</span>
+        <span class="blk" style="left:476px; width:102px; background:#9FE1CB; color:#04342C;">P2</span>
+        <span class="blk" style="left:578px; width:68px; background:#F5C4B3; color:#4A1B0C;">P3</span>
+        <span class="blk" style="left:646px; width:102px; background:#B5D4F4; color:#042C53;">P4</span>
+      </span></div>
+
+      <div style="display:flex; align-items:center; gap:8px;"><span class="labc"><b>SRTF</b><span>fin 22</span></span><span class="trk" style="width:748px;">
+        <span class="blk" style="left:0px; width:102px; background:#CECBF6; color:#26215C;">P1</span>
+        <span class="blk" style="left:102px; width:68px; background:#9FE1CB; color:#04342C;">P2</span>
+        <span class="blk idle" style="left:170px; width:102px;"></span>
+        <span class="blk" style="left:272px; width:68px; background:#CECBF6; color:#26215C;">P1</span>
+        <span class="blk" style="left:340px; width:136px; background:#F5C4B3; color:#4A1B0C;">P3</span>
+        <span class="blk" style="left:476px; width:102px; background:#9FE1CB; color:#04342C;">P2</span>
+        <span class="blk" style="left:578px; width:68px; background:#F5C4B3; color:#4A1B0C;">P3</span>
+        <span class="blk" style="left:646px; width:102px; background:#B5D4F4; color:#042C53;">P4</span>
+      </span></div>
+
+      <div style="display:flex; align-items:center; gap:8px;"><span class="labc"><b>RR (q=2)</b><span>fin 23</span></span><span class="trk" style="width:782px;">
+        <span class="blk" style="left:0px; width:68px; background:#CECBF6; color:#26215C;">P1</span>
+        <span class="blk" style="left:68px; width:68px; background:#9FE1CB; color:#04342C;">P2</span>
+        <span class="blk" style="left:136px; width:34px; background:#CECBF6; color:#26215C;">P1</span>
+        <span class="blk idle" style="left:170px; width:136px;"></span>
+        <span class="blk" style="left:306px; width:68px; background:#F5C4B3; color:#4A1B0C;">P3</span>
+        <span class="blk" style="left:374px; width:68px; background:#9FE1CB; color:#04342C;">P2</span>
+        <span class="blk" style="left:442px; width:68px; background:#F5C4B3; color:#4A1B0C;">P3</span>
+        <span class="blk" style="left:510px; width:34px; background:#9FE1CB; color:#04342C;">P2</span>
+        <span class="blk" style="left:544px; width:68px; background:#CECBF6; color:#26215C;">P1</span>
+        <span class="blk" style="left:612px; width:68px; background:#B5D4F4; color:#042C53;">P4</span>
+        <span class="blk" style="left:680px; width:68px; background:#F5C4B3; color:#4A1B0C;">P3</span>
+        <span class="blk" style="left:748px; width:34px; background:#B5D4F4; color:#042C53;">P4</span>
+      </span></div>
+
+      <span style="position:absolute; top:0; bottom:0; left:878px; width:2px; background:#161920; border-radius:1px;"></span>
+    </div>
+  </div>
+
+  <div style="background:#FFFFFF; border:1px solid #DBDFE6; border-radius:10px; padding:16px 18px; display:flex; flex-direction:column; gap:12px;">
+    <div class="eyb" style="margin-bottom:0;">Comparación de políticas</div>
+    <table>
+      <thead><tr><th>Política</th><th>Espera media</th><th>Peor espera</th><th>Respuesta media</th><th>Retorno medio</th><th>Cambios de contexto</th><th>Tiempo total</th></tr></thead>
+      <tbody>
+        <tr><td style="color:#161920; font-weight:500;">FCFS</td><td>1.75</td><td>4</td><td>1.00</td><td>10.75</td><td class="mej">6</td><td class="mej">22</td></tr>
+        <tr><td style="color:#161920; font-weight:500;">SJF</td><td class="mej">1.50</td><td class="mej">3</td><td>1.50</td><td class="mej">10.50</td><td class="mej">6</td><td class="mej">22</td></tr>
+        <tr><td style="color:#161920; font-weight:500;">SRTF</td><td class="mej">1.50</td><td class="mej">3</td><td>1.50</td><td class="mej">10.50</td><td class="mej">6</td><td class="mej">22</td></tr>
+        <tr><td style="color:#161920; font-weight:500;">RR (q=2)</td><td>3.75</td><td>4</td><td class="mej">0.75</td><td>13.25</td><td>10</td><td>23</td></tr>
+      </tbody>
+    </table>
+    <p style="margin:0; font-size:12.5px; color:#868D9C; line-height:1.55;">Las cuatro políticas resuelven el mismo lote sobre un reloj compartido. Está resaltado el mejor valor de cada columna: ninguna gana en todas, y ahí está el punto.</p>
+  </div>
+
+</div>
+</div>
+</x-dc>
+</body>
+</html>

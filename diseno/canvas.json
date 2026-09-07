@@ -1,0 +1,8 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "title": "Escritorio · paso a paso", "x": 0, "y": 0, "w": 1240, "h": 2480 },
+    { "file": "Comparacion.dc.html", "title": "Escritorio · comparación", "x": 1360, "y": 0, "w": 1240, "h": 740 },
+    { "file": "Movil.dc.html", "title": "Móvil 390", "x": 2720, "y": 0, "w": 390, "h": 2960 }
+  ],
+  "launch": { "view": "canvas" }
+}

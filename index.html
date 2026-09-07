@@ -525,7 +525,7 @@ function simular(ps, nombres, c){
         pend.push({txt:`${e.id} agota su quantum y vuelve al final de la cola de listos; le restan ${e.restante} unidades de CPU`});
       }
     }
-    D.forEach(d => { if(d.ocupa) d.restante--; });
+    D.forEach(d => { if(d.ocupa){ d.restante--; est[d.ocupa].restante--; } });
     t++;
   }
   pasos.push({t, corriendo:null, cola:[], ev:pend,
