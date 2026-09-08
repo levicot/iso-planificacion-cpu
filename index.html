@@ -101,6 +101,9 @@ input:focus-visible,select:focus-visible,button:focus-visible,.tl-scroll:focus-v
 .btn-mini:disabled{opacity:.35;cursor:not-allowed}
 .btn-x{border:none;background:none;color:var(--ink-3);cursor:pointer;font-size:16px;line-height:1;padding:2px 6px;border-radius:5px}
 .btn-x:hover{color:var(--danger);background:var(--panel-2)}
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.btn-icono{padding:3px 5px}
+.btn-icono svg{display:block;width:16px;height:16px}
 
 .proc{border:1px solid var(--line);border-radius:9px;padding:10px 12px;background:var(--panel-2);margin-bottom:9px}
 .proc-top{display:flex;align-items:center;gap:12px;margin-bottom:9px}
@@ -265,11 +268,21 @@ kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--panel-
 
 <div class="cols" id="cols">
   <section class="panel">
-    <span class="eyebrow">Lote de procesos</span>
+    <div class="panel-head">
+      <span class="eyebrow">Lote de procesos</span>
+      <button class="btn-x btn-icono" id="limpiar" title="Limpiar el lote y empezar de cero"
+        aria-label="Limpiar el lote y empezar de cero">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+          stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/>
+          <path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"/>
+          <path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/>
+        </svg>
+      </button>
+    </div>
     <div id="lote"></div>
     <div class="filas-acc">
       <button class="btn" id="add">Agregar proceso</button>
-      <button class="btn" id="limpiar">Limpiar</button>
       <button class="btn" id="ejES">Lote con E/S</button>
       <button class="btn" id="ejCPU">Lote con CPU disputada</button>
       <button class="btn" id="ejPrio">Lote con inanición</button>
