@@ -114,6 +114,26 @@ discusión:
 - El cambio es atómico —ni SRTF lo interrumpe— y el proceso elegido sigue listo
   mientras dura, así que esas unidades cuentan como espera suya.
 
+## Modo ejercicio
+
+El cuarto modo de la línea de tiempo invierte la herramienta: en vez de mostrar
+la respuesta, la pregunta. En cada instante en que el planificador tiene que
+elegir, oculta el panel de eventos y las métricas y pregunta **qué proceso toma
+la CPU**, ofreciendo los procesos elegibles más la opción *ninguno, la CPU queda
+ociosa*. Los paneles de definición se colapsan a un resumen de sólo lectura; la
+cola de listos, los dispositivos y el estado de cada proceso siguen visibles,
+porque son la información con la que hay que razonar.
+
+Tras responder aparece la justificación que el simulador ya calculaba, y **la
+simulación avanza con la respuesta correcta, no con la del alumno**: así un
+error temprano no arrastra todas las decisiones siguientes. Al terminar se
+muestra el puntaje, la lista de errores con su explicación, y recién ahí las
+métricas del lote.
+
+El selector elige entre preguntar **todas las decisiones** o **sólo las
+disputadas** —aquellas con más de un candidato—, que sobre el lote con E/S son
+15 y 11 respectivamente.
+
 ## Compartir ejercicios
 
 El botón **Compartir este ejercicio** genera un código con el lote completo.

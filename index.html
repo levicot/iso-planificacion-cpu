@@ -58,6 +58,27 @@ header{border-bottom:1px solid var(--line);padding-bottom:20px}
 .abajo{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
 .stackcol{display:flex;flex-direction:column;gap:18px}
 .ancho{grid-column:1/-1}
+.ej-top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px;
+  padding-bottom:14px;border-bottom:1px solid var(--line)}
+.ej-prog{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--ink-2)}
+.ej-prog b{color:var(--ink);font-weight:600}
+.ej-preg{font-size:15px;font-weight:500;margin-bottom:10px}
+.ej-ops{display:flex;gap:8px;flex-wrap:wrap}
+.ej-op{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;padding:8px 14px;
+  border-radius:8px;border:1px solid var(--line-2);background:var(--panel);color:var(--ink);cursor:pointer}
+.ej-op:hover:not(:disabled){border-color:var(--ink-3);background:var(--panel-2)}
+.ej-op:disabled{cursor:default;opacity:.45}
+.ej-op.correcta{background:var(--c2-soft);border-color:var(--c2-mid);color:var(--c2-deep);opacity:1}
+.ej-op.errada{background:var(--c3-soft);border-color:var(--c3-mid);color:var(--c3-deep);opacity:1}
+.ej-fb{margin-top:12px;padding:12px 14px;border-radius:8px;background:var(--panel-2);
+  border:1px solid var(--line);font-size:13.5px;line-height:1.55;color:var(--ink-2)}
+.ej-fb b{color:var(--ink);font-weight:500}
+.ej-fb ul{margin:7px 0 0;padding-left:18px}
+.ej-fb li{margin-bottom:3px}
+.ej-tabla{display:grid;grid-template-columns:auto auto auto 1fr;gap:7px 14px;align-items:baseline;
+  font-size:13.5px;color:var(--ink-2);margin-top:12px}
+.ej-tabla .mono{font-size:12.5px}
+.ej-res{font-size:17px;font-weight:500;color:var(--ink)}
 @media (max-width:900px){ .cols,.abajo{grid-template-columns:1fr} }
 
 label{font-size:13px;color:var(--ink-2)}
@@ -241,7 +262,7 @@ kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--panel-
   <p class="lead">Definí un lote de procesos con sus ráfagas de CPU y sus pedidos de E/S a dispositivos concretos, elegí una política y avanzá el reloj de a una unidad para ver qué decide el planificador en cada instante y por qué.</p>
 </header>
 
-<div class="cols">
+<div class="cols" id="cols">
   <section class="panel">
     <span class="eyebrow">Lote de procesos</span>
     <div id="lote"></div>
@@ -290,7 +311,7 @@ kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--panel-
 </div>
 
 <section class="tl-panel">
-  <div class="transport">
+  <div class="transport" id="transport">
     <div class="reloj" id="reloj">t=0</div>
     <button class="btn btn-icon" id="ini" aria-label="Ir al inicio" title="Inicio">|◀</button>
     <button class="btn btn-icon" id="atras" aria-label="Un paso atrás" title="Atrás">◀</button>
@@ -305,6 +326,7 @@ kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--panel-
       <button class="seg-b activo" data-modo="uno">Un algoritmo, paso a paso</button>
       <button class="seg-b" data-modo="comparar">Comparar políticas</button>
       <button class="seg-b" id="segQ" data-modo="quantums">Comparar quantums</button>
+      <button class="seg-b" data-modo="ejercicio">Modo ejercicio</button>
     </div>
     <div class="legend" id="leyenda">
       <span><i class="sw sw-e"></i>usando la CPU</span>
@@ -315,6 +337,21 @@ kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--panel-
       <span><i class="sw-mk sw-mk-f"></i>termina</span>
     </div>
   </div>
+  <div id="ejBarra" hidden>
+    <div class="ej-top">
+      <span class="ej-prog">Decisión <b id="ejN">1</b> de <b id="ejTot">1</b></span>
+      <span class="ej-prog">instante <b id="ejT">0</b></span>
+      <span style="flex:1"></span>
+      <span class="ej-prog">aciertos <b id="ejOK">0</b> · errores <b id="ejMal">0</b></span>
+      <select id="ejFiltro" style="width:auto" aria-label="Qué decisiones preguntar">
+        <option value="todas">Todas las decisiones</option>
+        <option value="disputadas">Sólo las disputadas</option>
+      </select>
+      <button class="btn" id="ejReiniciar">Reiniciar</button>
+    </div>
+    <div id="ejPregunta"></div>
+    <div id="ejFeedback"></div>
+  </div>
   <div class="tl-scroll" id="tlScroll" tabindex="0"><div class="tl-body" id="tl"></div></div>
 </section>
 
@@ -322,6 +359,16 @@ kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--panel-
   <span class="eyebrow" id="cmpTitulo">Comparación de políticas</span>
   <div class="tabla-wrap"><table id="tablaCmp"></table></div>
   <p class="hint" id="cmpNota"></p>
+</section>
+
+<section class="panel" id="resumenEj" hidden>
+  <span class="eyebrow">El lote de este ejercicio</span>
+  <div id="resumenEjTxt"></div>
+</section>
+
+<section class="panel" id="panelResultado" hidden>
+  <span class="eyebrow">Resultado</span>
+  <div id="ejResumen"></div>
 </section>
 
 <div class="abajo" id="panelesUno">
@@ -337,7 +384,7 @@ kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--panel-
     <span class="eyebrow">Estado de cada proceso</span>
     <div class="estados" id="estados"></div>
   </section>
-  <section class="panel ancho">
+  <section class="panel ancho" id="panelEventos">
     <span class="eyebrow">Qué pasa en este instante</span>
     <div class="ev" id="eventos" aria-live="polite"></div>
   </section>
@@ -449,7 +496,7 @@ const SO = '#cambio';
 const QUANTUMS = [1, 2, 4, 8];
 const leyenda = () => {
   const so = cfg.cambio > 0 ? `<span><i class="sw sw-so"></i>cambio de contexto</span>` : '';
-  return modo === 'uno'
+  return !esCmp()
     ? `<span><i class="sw sw-e"></i>usando la CPU</span>
        <span><i class="sw sw-u"></i>usando E/S</span>
        <span><i class="sw sw-w"></i>esperando el dispositivo</span>
@@ -461,7 +508,7 @@ const leyenda = () => {
 };
 let {devs, lote, cfg} = EJEMPLOS.es();
 let modo = 'uno', sims = null;
-let sim = null, paso = 0, tocando = false, timer = null;
+let sim = null, paso = 0, tocando = false, timer = null, ej = null;
 
 function validar(){
   const errs = {}, ps = [];
@@ -519,6 +566,10 @@ function simular(ps, nombres, c){
   ps.forEach(p => linea[p.id] = []);
   const LIM = 400;
   const listo = () => ps.every(p => est[p.id].estado === 'terminado');
+  const foto = () => ps.map(p => { const e = est[p.id];
+    return {id:e.id, i:e.i, estado:e.estado, restante:e.restante, f:e.f, tot:e.fases.length,
+      prio:e.prio, prioAct:e.prioAct, resto:e.resto, q0:e.q,
+      dev:e.estado === 'usandoES' || e.estado === 'esperaES' ? e.fases[e.f].dev : null};});
 
   while(!listo() && t < LIM){
     const ev = pend; pend = [];
@@ -559,6 +610,7 @@ function simular(ps, nombres, c){
     } else cola.push(...entran);
 
     let reciCargado = false, auxDesp = null;
+    let decision = false, respuesta = null, opciones = null, pre = null;
     if(sobrecarga === 0 && entrante !== null){
       const id = entrante; entrante = null;
       reciCargado = true;
@@ -586,7 +638,12 @@ function simular(ps, nombres, c){
         est[corriendo].estado = 'listo'; cola.push(corriendo); corriendo = null;
       }
     }
-    if(sobrecarga === 0 && entrante === null && !corriendo && (cola.length || aux.length)){
+    if(sobrecarga === 0 && entrante === null && !corriendo){
+      decision = true;
+      pre = {cola:cola.slice(), aux:aux.slice(), snap:foto()};
+      opciones = c.alg === 'vrr' ? aux.concat(cola) : cola.slice();
+    }
+    if(decision && (cola.length || aux.length)){
       const desdeAux = c.alg === 'vrr' && aux.length > 0;
       const id = desdeAux ? aux[0] : elegir(cola, est, c);
       const porcion = desdeAux ? est[id].resto : c.quantum;
@@ -597,6 +654,7 @@ function simular(ps, nombres, c){
         cambios++;
         if(c.cambio > 0){
           sobrecarga = c.cambio; entrante = id; entranteQ = porcion; entranteAux = desdeAux;
+          respuesta = id;
           ev.push({txt:`Cambio de contexto: el sistema guarda el estado de ${ultimo} y carga el de ${id}, y la CPU queda ${c.cambio} unidad${c.cambio > 1 ? 'es' : ''} sin trabajo útil`});
         }
       }
@@ -604,6 +662,7 @@ function simular(ps, nombres, c){
         const orig = desdeAux ? aux : cola;
         orig.splice(orig.indexOf(id), 1);
         if(desdeAux) auxDesp = id;
+        respuesta = id;
         corriendo = id; ultimo = id;
         const e = est[id];
         e.estado = 'ejecutando'; e.q = porcion; e.resto = 0;
@@ -623,12 +682,10 @@ function simular(ps, nombres, c){
       else if(e.estado === 'esperaES') e.espES++;
     });
     pasos.push({t, corriendo, cola:cola.slice(), aux:aux.slice(), auxDesp, ev,
+      decision, respuesta, opciones, pre,
       so: sobrecarga > 0 ? {de:ultimo, a:entrante} : null,
       devs:D.map(d => ({i:d.i, n:d.n, ocupa:d.ocupa, restante:d.restante, cola:d.cola.slice()})),
-      snap:ps.map(p => { const e = est[p.id];
-        return {id:e.id, i:e.i, estado:e.estado, restante:e.restante, f:e.f, tot:e.fases.length,
-          prio:e.prio, prioAct:e.prioAct, resto:e.resto, q0:e.q,
-          dev:e.estado === 'usandoES' || e.estado === 'esperaES' ? e.fases[e.f].dev : null};})});
+      snap:foto()});
 
     if(usaPrio(c.alg) && c.envej > 0) ps.forEach(p => { const e = est[p.id];
       if(e.estado !== 'listo') return;
@@ -667,6 +724,7 @@ function simular(ps, nombres, c){
     t++;
   }
   pasos.push({t, corriendo:null, cola:[], aux:[], auxDesp:null, ev:pend, so:null,
+    decision:false, respuesta:null, opciones:null, pre:null,
     devs:D.map(d => ({i:d.i, n:d.n, ocupa:null, restante:0, cola:[]})),
     snap:ps.map(p => { const e = est[p.id];
       return {id:e.id, i:e.i, estado:e.estado, restante:0, f:e.f, tot:e.fases.length, prio:e.prio, prioAct:e.prio, dev:null};})});
@@ -814,49 +872,55 @@ const ETIQ = {nuevo:'nuevo', listo:'listo', ejecutando:'ejecutando', usandoES:'u
 
 function renderPanel(){
   const st = sim.pasos[paso];
+  const oculto = modo === 'ejercicio' && ej && !ej.respondida && st.decision;
+  const cola = oculto ? st.pre.cola : st.cola;
+  const auxQ = oculto ? st.pre.aux : st.aux;
+  const snap = oculto ? st.pre.snap : st.snap;
+  const auxDesp = oculto ? null : st.auxDesp;
   const idxDe = id => sim.ps.find(p => p.id === id).i;
   const chip = (id, txt) => `<span class="chip ${pc(idxDe(id))}">${id} <em>${txt}</em></span>`;
+  const dePid = id => snap.find(x => x.id === id);
 
   const prio = usaPrio(cfg.alg);
   const dato = sn => prio
     ? 'prio ' + sn.prioAct + (sn.prioAct !== sn.prio ? ` (base ${sn.prio})` : '')
     : 'restan ' + sn.restante;
-  const chipsDe = (ids, f) => ids.map(id => chip(id, f(st.snap.find(x => x.id === id)))).join('');
+  const chipsDe = (ids, f) => ids.map(id => chip(id, f(dePid(id)))).join('');
   const colaEl = $('#cola');
   if(cfg.alg === 'vrr'){
     colaEl.style.flexDirection = 'column';
     colaEl.style.alignItems = 'stretch';
     colaEl.innerHTML =
-      `<div class="cola"><span class="cabeza">auxiliar →</span>${
-        (st.auxDesp ? chip(st.auxDesp, `quantum ${st.snap.find(x => x.id === st.auxDesp).q0} → a la CPU`) : '') +
-        (st.aux.length ? chipsDe(st.aux, sn => `quantum ${sn.resto}`) : '')
+      `<div class="cola"><span class="cabeza">auxiliar &rarr;</span>${
+        (auxDesp ? chip(auxDesp, `quantum ${dePid(auxDesp).q0} &rarr; a la CPU`) : '') +
+        (auxQ.length ? chipsDe(auxQ, sn => `quantum ${sn.resto}`) : '')
         || '<span class="vacio">Vacía: nadie volvió de E/S con quantum pendiente.</span>'}</div>` +
-      `<div class="cola"><span class="cabeza">listos →</span>${st.cola.length
-        ? chipsDe(st.cola, dato)
+      `<div class="cola"><span class="cabeza">listos &rarr;</span>${cola.length
+        ? chipsDe(cola, dato)
         : '<span class="vacio">Vacía.</span>'}</div>`;
   } else {
     colaEl.style.flexDirection = '';
     colaEl.style.alignItems = '';
-    colaEl.innerHTML = st.cola.length
-      ? '<span class="cabeza">cabeza →</span>' + chipsDe(st.cola, dato)
+    colaEl.innerHTML = cola.length
+      ? '<span class="cabeza">cabeza &rarr;</span>' + chipsDe(cola, dato)
       : '<span class="vacio">No hay procesos esperando la CPU en este instante.</span>';
   }
 
   $('#devEst').innerHTML = st.devs.map(d => `<div class="dev-est">
     <div class="dev-nom">${esc(d.n)}<span>${d.ocupa ? 'atendiendo' : 'libre'}</span></div>
     <div class="cola">${d.ocupa ? chip(d.ocupa, 'restan ' + d.restante) : '<span class="vacio">Sin uso.</span>'}
-      ${d.cola.length ? '<span class="cabeza">en cola →</span>' + d.cola.map(id =>
-        chip(id, 'pide ' + st.snap.find(x => x.id === id).restante)).join('') : ''}</div></div>`).join('');
+      ${d.cola.length ? '<span class="cabeza">en cola &rarr;</span>' + d.cola.map(id =>
+        chip(id, 'pide ' + dePid(id).restante)).join('') : ''}</div></div>`).join('');
 
-  $('#estados').innerHTML = st.snap.map(s => {
+  $('#estados').innerHTML = snap.map(s2 => {
     let det = '';
-    if(s.estado === 'ejecutando' || s.estado === 'listo')
-      det = `CPU ${Math.floor(s.f/2)+1} · restan ${s.restante}` + (prio ? ` · ${dato(s)}` : '');
-    else if(s.estado === 'usandoES') det = `${esc(st.devs[s.dev].n)} · restan ${s.restante}`;
-    else if(s.estado === 'esperaES') det = `${esc(st.devs[s.dev].n)} · pide ${s.restante}`;
-    return `<div class="est-fila ${pc(s.i)}"><i class="dot"></i>` +
-      `<span class="mono" style="font-size:12.5px;font-weight:500">${s.id}</span>` +
-      `<span class="pill ${s.estado}">${ETIQ[s.estado]}</span><span class="num">${det}</span></div>`;
+    if(s2.estado === 'ejecutando' || s2.estado === 'listo')
+      det = `CPU ${Math.floor(s2.f/2)+1} &middot; restan ${s2.restante}` + (prio ? ` &middot; ${dato(s2)}` : '');
+    else if(s2.estado === 'usandoES') det = `${esc(st.devs[s2.dev].n)} &middot; restan ${s2.restante}`;
+    else if(s2.estado === 'esperaES') det = `${esc(st.devs[s2.dev].n)} &middot; pide ${s2.restante}`;
+    return `<div class="est-fila ${pc(s2.i)}"><i class="dot"></i>` +
+      `<span class="mono" style="font-size:12.5px;font-weight:500">${s2.id}</span>` +
+      `<span class="pill ${s2.estado}">${ETIQ[s2.estado]}</span><span class="num">${det}</span></div>`;
   }).join('');
 
   $('#eventos').innerHTML = st.ev.length
@@ -894,15 +958,21 @@ function recalcular(){
   if(modo === 'quantums' && !usaQuantum(cfg.alg)) modo = 'uno';
   sincronizarModo();
   sim = simular(v.ps, devs, cfg);
-  sims = modo === 'comparar'
+  sims = !esCmp() ? null : modo === 'comparar'
     ? ALGS.map(a => ({nom:a.id === 'rr' ? `RR (q=${cfg.quantum})` : a.n, s:simular(v.ps, devs, {...cfg, alg:a.id})}))
-    : modo === 'quantums'
-    ? QUANTUMS.map(q => ({nom:`${cfg.alg === 'vrr' ? 'VRR' : 'RR'} q=${q}`, s:simular(v.ps, devs, {...cfg, quantum:q})}))
-    : null;
-  paso = Math.min(paso, maxPaso());
-  $('#panelesUno').hidden = modo !== 'uno';
-  $('#panelMetricas').hidden = modo !== 'uno';
-  $('#panelCmp').hidden = modo === 'uno';
+    : QUANTUMS.map(q => ({nom:`${cfg.alg === 'vrr' ? 'VRR' : 'RR'} q=${q}`, s:simular(v.ps, devs, {...cfg, quantum:q})}));
+  const ejMode = modo === 'ejercicio';
+  if(ejMode){ armarEjercicio(); paso = ej.preguntas.length ? ej.preguntas[0] : 0; }
+  else { ej = null; paso = Math.min(paso, maxPaso()); }
+  $('#cols').hidden = ejMode;
+  $('#resumenEj').hidden = !ejMode;
+  $('#transport').hidden = ejMode;
+  $('#ejBarra').hidden = !ejMode;
+  $('#panelEventos').hidden = ejMode;
+  $('#panelesUno').hidden = esCmp();
+  $('#panelMetricas').hidden = esCmp() || ejMode;
+  $('#panelResultado').hidden = true;
+  $('#panelCmp').hidden = !esCmp();
   $('#campoQ').style.display = (usaQuantum(cfg.alg) && modo !== 'quantums') ? 'flex' : 'none';
   $('#leyenda').innerHTML = leyenda();
   $('#campoEnvej').style.display = usaPrio(cfg.alg) ? 'flex' : 'none';
@@ -911,7 +981,8 @@ function recalcular(){
   guardar();
   render();
 }
-const maxPaso = () => modo === 'uno' ? sim.T : Math.max(...sims.map(x => x.s.T));
+const esCmp = () => modo === 'comparar' || modo === 'quantums';
+const maxPaso = () => esCmp() ? Math.max(...sims.map(x => x.s.T)) : sim.T;
 function renderReloj(){
   const mx = maxPaso();
   $('#reloj').innerHTML = `t=${Math.min(paso, mx)}` + (paso >= mx ? ' <small>fin</small>' : '');
@@ -924,8 +995,95 @@ function sincronizarModo(){
 }
 function render(){
   renderReloj();
-  if(modo === 'uno'){ renderTL(); renderPanel(); renderMetricas(); }
-  else renderCmp();
+  if(esCmp()){ renderCmp(); return; }
+  renderTL(); renderPanel(); renderMetricas();
+  if(modo === 'ejercicio') renderEjercicio();
+}
+
+function ejTerminado(){ return ej && ej.i >= ej.preguntas.length; }
+
+function armarEjercicio(){
+  const preg = [], soloDisputadas = $('#ejFiltro').value === 'disputadas';
+  sim.pasos.forEach(pa => {
+    if(!pa.decision) return;
+    const bloqueados = pa.pre.snap.some(x => x.estado === 'usandoES' || x.estado === 'esperaES');
+    if(!pa.opciones.length && !bloqueados) return;
+    if(soloDisputadas && pa.opciones.length === 1) return;
+    preg.push(pa.t);
+  });
+  ej = {preguntas:preg, i:0, ok:0, mal:[], respondida:false, elegida:null};
+}
+
+function renderResumenEj(){
+  const nom = f => f.t === 'cpu' ? `CPU ${f.d}` : `${esc(devs[Math.min(f.dev, devs.length-1)])} ${f.d}`;
+  const alg = ALGS.find(a => a.id === cfg.alg);
+  const extras = [usaQuantum(cfg.alg) ? `quantum ${cfg.quantum}` : '',
+    usaPrio(cfg.alg) ? (cfg.envej ? `envejecimiento cada ${cfg.envej}` : 'sin envejecimiento') : '',
+    cfg.cambio ? `cambio de contexto ${cfg.cambio}` : ''].filter(Boolean);
+  $('#resumenEjTxt').innerHTML =
+    `<div style="font-size:13.5px;color:var(--ink-2);margin-bottom:10px"><b style="color:var(--ink);font-weight:500">${alg.n}</b>${extras.length ? ' · ' + extras.join(' · ') : ''}</div>` +
+    '<div style="display:flex;flex-direction:column;gap:6px">' +
+    sim.ps.map(p => `<div class="${pc(p.i)}" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">` +
+      `<i class="dot"></i><span class="mono" style="font-size:13px;font-weight:600">${p.id}</span>` +
+      `<span class="mono" style="font-size:12px;color:var(--ink-3)">llega ${p.llegada}${usaPrio(cfg.alg) ? ` · prioridad ${p.prio}` : ''}</span>` +
+      `<span class="mono" style="font-size:12px;color:var(--ink-2)">${p.fases.map(nom).join(' &rarr; ')}</span></div>`).join('') + '</div>';
+}
+
+function ejFeedback(st){
+  const acerto = ej.elegida === st.respuesta;
+  const razones = st.ev.filter(e => /Se despacha|expropia|Cambio de contexto/.test(e.txt)).map(e => e.txt);
+  const cuerpo = razones.length
+    ? '<ul>' + razones.map(x => `<li>${x}</li>`).join('') + '</ul>'
+    : '<ul><li>Ningún proceso está listo: los que quedan están bloqueados en E/S o todavía no llegaron, así que la CPU queda ociosa.</li></ul>';
+  const ultima = ej.i + 1 >= ej.preguntas.length;
+  return `<div class="ej-fb"><b>${acerto ? 'Correcto.' : `No: la respuesta era ${st.respuesta || 'ninguno'}.`}</b>${cuerpo}` +
+    `<div style="margin-top:12px"><button class="btn btn-pri" id="ejSiguiente">${ultima ? 'Ver resultado' : 'Siguiente decisión'}</button></div></div>`;
+}
+
+function renderEjercicio(){
+  renderResumenEj();
+  const n = ej.preguntas.length;
+  $('#ejTot').textContent = n;
+  $('#ejOK').textContent = ej.ok;
+  $('#ejMal').textContent = ej.mal.length;
+  if(!n){
+    $('#ejN').textContent = 0;
+    $('#ejPregunta').innerHTML = '<span class="vacio">Este lote no tiene decisiones para practicar.</span>';
+    $('#ejFeedback').innerHTML = '';
+    return;
+  }
+  if(ejTerminado()){
+    $('#ejN').textContent = n;
+    $('#ejPregunta').innerHTML = '';
+    $('#ejFeedback').innerHTML = '';
+    $('#panelMetricas').hidden = false;
+    $('#panelResultado').hidden = false;
+    $('#ejResumen').innerHTML =
+      `<div class="ej-res">Acertaste ${ej.ok} de ${n} decisiones.</div>` +
+      (ej.mal.length
+        ? '<div class="ej-tabla">' + ej.mal.map(m =>
+            `<span class="mono">t=${m.t}</span><span>respondiste <b class="mono">${m.elegida || 'ninguno'}</b></span>` +
+            `<span>correcta <b class="mono">${m.correcta || 'ninguno'}</b></span><span>${m.txt}</span>`).join('') + '</div>'
+        : '<p class="hint">Sin errores: resolviste el lote completo.</p>');
+    return;
+  }
+  $('#panelMetricas').hidden = true;
+  $('#panelResultado').hidden = true;
+  const t = ej.preguntas[ej.i], st = sim.pasos[t];
+  $('#ejN').textContent = ej.i + 1;
+  $('#ejT').textContent = t;
+  $('#ejPregunta').innerHTML =
+    `<div class="ej-preg">¿Qué proceso toma la CPU en el instante ${t}?</div><div class="ej-ops">` +
+    st.opciones.concat([null]).map(id => {
+      let cls = 'ej-op';
+      if(ej.respondida){
+        if(id === st.respuesta) cls += ' correcta';
+        else if(id === ej.elegida) cls += ' errada';
+      }
+      return `<button class="${cls}" data-op="${id === null ? '' : id}"${ej.respondida ? ' disabled' : ''}>` +
+        `${id === null ? 'Ninguno: la CPU queda ociosa' : id}</button>`;
+    }).join('') + '</div>';
+  $('#ejFeedback').innerHTML = ej.respondida ? ejFeedback(st) : '';
 }
 function renderCmp(){
   const Tmax = Math.max(...sims.map(x => x.s.T));
@@ -1045,6 +1203,29 @@ function cargarEjemplo(k){
 $('#ejES').addEventListener('click', () => cargarEjemplo('es'));
 $('#ejCPU').addEventListener('click', () => cargarEjemplo('cpu'));
 $('#ejPrio').addEventListener('click', () => cargarEjemplo('prio'));
+$('#ejFiltro').addEventListener('change', () => {
+  armarEjercicio(); paso = ej.preguntas.length ? ej.preguntas[0] : 0; render();
+});
+$('#ejReiniciar').addEventListener('click', () => {
+  armarEjercicio(); paso = ej.preguntas.length ? ej.preguntas[0] : 0; render();
+});
+$('#ejBarra').addEventListener('click', e => {
+  const op = e.target.closest('.ej-op');
+  if(op && ej && !ej.respondida){
+    const st = sim.pasos[ej.preguntas[ej.i]];
+    ej.elegida = op.dataset.op || null;
+    ej.respondida = true;
+    if(ej.elegida === st.respuesta) ej.ok++;
+    else ej.mal.push({t:st.t, elegida:ej.elegida, correcta:st.respuesta,
+      txt:(st.ev.find(x => /Se despacha/.test(x.txt)) || {txt:'No había ningún proceso listo.'}).txt});
+    paso = Math.min(st.t + 1, sim.T);
+    render();
+  } else if(e.target.id === 'ejSiguiente'){
+    ej.i++; ej.respondida = false; ej.elegida = null;
+    paso = ejTerminado() ? sim.T : ej.preguntas[ej.i];
+    render();
+  }
+});
 $('#ejES2').addEventListener('click', () => cargarEjemplo('es2'));
 document.querySelectorAll('.seg-b').forEach(b => b.addEventListener('click', e => {
   const m = e.currentTarget.dataset.modo;
