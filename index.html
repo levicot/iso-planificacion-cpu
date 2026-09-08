@@ -202,6 +202,7 @@ th{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-
 td{border-bottom:1px solid var(--line);color:var(--ink-2)}
 th:first-child,td:first-child{text-align:left;padding-left:0}
 td.id{color:var(--ink);font-weight:500}
+td.total{color:var(--ink)}
 tr.prom td{border-bottom:none;color:var(--ink);font-weight:600;padding-top:10px}
 .global{display:flex;gap:24px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
 .global div{display:flex;flex-direction:column;gap:1px}
@@ -335,7 +336,7 @@ kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--panel-
     <ul>
       <li>Cada dispositivo atiende a un proceso por vez y sin expropiación: el que empieza un servicio lo termina.</li>
       <li>La cola de cada dispositivo es FIFO, por orden de pedido. Cuando el dispositivo se libera toma al primero de su cola en ese mismo instante.</li>
-      <li>El tiempo en la cola de un dispositivo cuenta como <b>espera de E/S</b>, no como espera de CPU. Por eso <span class="mono">retorno = CPU + E/S + espera CPU + espera E/S</span>.</li>
+      <li>El tiempo en la cola de un dispositivo cuenta como <b>espera de E/S</b>, no como espera de CPU. La columna <b>Esp. total</b> las suma, de modo que <span class="mono">retorno = CPU + E/S + espera total</span>.</li>
       <li>Dentro de un mismo instante, primero se encolan en listos los procesos que terminan su E/S y después las llegadas nuevas.</li>
       <li>En SJF y SRTF, ante dos procesos con la misma ráfaga o el mismo tiempo restante gana el que lleva más tiempo en la cola.</li>
       <li>SJF compara la <b>ráfaga de CPU actual</b>, no la suma de todas las ráfagas del proceso.</li>
@@ -718,9 +719,10 @@ function renderPanel(){
 function renderMetricas(){
   const m = sim.met, n = m.length;
   const prom = f => (m.reduce((a,x) => a + x[f], 0) / n).toFixed(2);
-  let h = '<thead><tr><th>Proceso</th><th>Llegada</th><th>CPU</th><th>E/S</th><th>Esp. CPU</th><th>Esp. E/S</th><th>Fin</th><th>Retorno</th><th>Respuesta</th></tr></thead><tbody>';
-  h += m.map(x => `<tr><td class="id">${x.id}</td><td>${x.llegada}</td><td>${x.cpu}</td><td>${x.es}</td><td>${x.espCPU}</td><td>${x.espES}</td><td>${x.fin}</td><td>${x.retorno}</td><td>${x.respuesta}</td></tr>`).join('');
-  h += `<tr class="prom"><td>Promedio</td><td></td><td></td><td></td><td>${prom('espCPU')}</td><td>${prom('espES')}</td><td></td><td>${prom('retorno')}</td><td>${prom('respuesta')}</td></tr></tbody>`;
+  const promTot = (m.reduce((a,x) => a + x.espCPU + x.espES, 0) / n).toFixed(2);
+  let h = '<thead><tr><th>Proceso</th><th>Llegada</th><th>CPU</th><th>E/S</th><th>Esp. CPU</th><th>Esp. E/S</th><th>Esp. total</th><th>Fin</th><th>Retorno</th><th>Respuesta</th></tr></thead><tbody>';
+  h += m.map(x => `<tr><td class="id">${x.id}</td><td>${x.llegada}</td><td>${x.cpu}</td><td>${x.es}</td><td>${x.espCPU}</td><td>${x.espES}</td><td class="total">${x.espCPU + x.espES}</td><td>${x.fin}</td><td>${x.retorno}</td><td>${x.respuesta}</td></tr>`).join('');
+  h += `<tr class="prom"><td>Promedio</td><td></td><td></td><td></td><td>${prom('espCPU')}</td><td>${prom('espES')}</td><td>${promTot}</td><td></td><td>${prom('retorno')}</td><td>${prom('respuesta')}</td></tr></tbody>`;
   $('#metricas').innerHTML = h;
   $('#global').innerHTML =
     `<div><span class="k">Tiempo total</span><span class="v">${sim.T}</span></div>` +
