@@ -19,6 +19,7 @@ reloj de a una unidad de tiempo para ver qué decide el planificador y por qué.
 | Prioridad | No | La más urgente primero |
 | Prioridad expropiativa | Sí | La más urgente primero |
 | Round Robin | Sí (por quantum) | Turno rotativo, quantum configurable |
+| VRR | Sí (por quantum) | Round Robin virtual, con cola auxiliar |
 
 En las políticas por prioridad el número más bajo es el más urgente, y el
 **envejecimiento** mejora un nivel cada N unidades esperando la CPU (0 lo
@@ -28,6 +29,16 @@ t=15 — espera 14 unidades. Con envejecimiento cada 2 unidades entra en t=9 y
 su espera baja a 8, mientras la espera media del lote sube de 3.00 a 3.67:
 el intercambio entre equidad y promedio, en dos números. Con factor 3 o 4 el
 envejecimiento no alcanza, que también es una lección.
+
+**VRR (Round Robin virtual).** Funciona como Round Robin, pero los procesos
+que vuelven de E/S **con quantum pendiente** entran en una cola auxiliar que
+tiene prioridad sobre la de listos, y al ser despachados desde ella reciben
+sólo lo que les quedó sin usar del quantum anterior. Corrige el castigo que RR
+le impone al proceso ligado a E/S, que agota una fracción mínima de su quantum
+y aun así vuelve al final de la cola. En el lote **ligado a E/S** con quantum 3,
+la espera media baja de 5.00 a 2.33: los dos procesos con E/S mejoran 3 y 6
+unidades, el ligado a CPU paga 1. Sin ráfagas de E/S, VRR produce exactamente
+el mismo diagrama que RR.
 
 **Costo del cambio de contexto.** Configurable, 0 por defecto. Con un costo
 mayor que cero, cada despacho de un proceso distinto del último que usó la CPU
@@ -64,6 +75,8 @@ columnas, mientras que el quantum 8 produce exactamente los números de FCFS.
   cambios de contexto.
 - **Lote con inanición** — seis procesos con prioridades y llegadas escalonadas.
   Sirve para ver la inanición por prioridad y cómo la corrige el envejecimiento.
+- **Lote ligado a E/S** — dos procesos de ráfagas cortas con mucha E/S y uno
+  puramente de CPU. Sirve para comparar RR contra VRR.
 
 ## Cómo se lee la línea de tiempo
 
