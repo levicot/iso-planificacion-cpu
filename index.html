@@ -70,6 +70,7 @@ header{border-bottom:1px solid var(--line);padding-bottom:20px}
 .ej-op:disabled{cursor:default;opacity:.45}
 .ej-op.correcta{background:var(--c2-soft);border-color:var(--c2-mid);color:var(--c2-deep);opacity:1}
 .ej-op.errada{background:var(--c3-soft);border-color:var(--c3-mid);color:var(--c3-deep);opacity:1}
+.ej-sub{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
 .ej-fb{margin-top:12px;padding:12px 14px;border-radius:8px;background:var(--panel-2);
   border:1px solid var(--line);font-size:13.5px;line-height:1.55;color:var(--ink-2)}
 .ej-fb b{color:var(--ink);font-weight:500}
@@ -343,6 +344,9 @@ kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--panel-
       <span class="ej-prog">instante <b id="ejT">0</b></span>
       <span style="flex:1"></span>
       <span class="ej-prog">aciertos <b id="ejOK">0</b> · errores <b id="ejMal">0</b></span>
+      <input type="text" id="ejSemilla" placeholder="semilla" style="width:96px"
+        title="Con la misma semilla sale siempre el mismo lote" aria-label="Semilla del lote">
+      <button class="btn" id="ejGenerar">Generar lote</button>
       <select id="ejFiltro" style="width:auto" aria-label="Qué decisiones preguntar">
         <option value="todas">Todas las decisiones</option>
         <option value="disputadas">Sólo las disputadas</option>
@@ -1002,6 +1006,45 @@ function render(){
 
 function ejTerminado(){ return ej && ej.i >= ej.preguntas.length; }
 
+function rngDe(sem){
+  let h = 2166136261;
+  for(const ch of String(sem)){ h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+  let x = (h >>> 0) || 123456789;
+  return () => { x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; x >>>= 0; return x / 4294967296; };
+}
+function generarLote(sem){
+  const r = rngDe(sem), ent = (a, b) => a + Math.floor(r() * (b - a + 1));
+  const n = ent(3, 5), nuevo = [];
+  let t = 0;
+  for(let i = 0; i < n; i++){
+    const fases = [cpuF(ent(2, 5))];
+    if(r() < 0.6) fases.push(ioF(ent(0, devs.length - 1), ent(2, 5)), cpuF(ent(2, 4)));
+    nuevo.push({llegada:t, prio:ent(0, 5), fases});
+    t += ent(0, 3);
+  }
+  return nuevo;
+}
+
+function extraDe(st){
+  if(!st.respuesta) return null;
+  const sn = st.pre.snap.find(x => x.id === st.respuesta);
+  if(cfg.alg === 'vrr' && st.pre.aux.includes(st.respuesta)){
+    const ops = [...new Set([sn.resto, cfg.quantum, sn.resto + 1, Math.max(1, sn.resto - 1)])]
+      .filter(x => x > 0).slice(0, 4).sort((a, b) => a - b);
+    return {texto:`¿Por cuántas unidades de tiempo recibe la CPU ${st.respuesta}?`,
+      opciones:ops, respuesta:sn.resto,
+      explicacion:`Viene de la cola auxiliar, así que no recibe un quantum completo sino lo que le quedó sin usar del anterior: ${sn.resto} de ${cfg.quantum}.`};
+  }
+  if(usaPrio(cfg.alg) && cfg.envej > 0 && sn.prioAct !== sn.prio){
+    const ops = [...new Set([sn.prioAct, sn.prio, sn.prioAct + 1, Math.max(0, sn.prioAct - 1)])]
+      .slice(0, 4).sort((a, b) => a - b);
+    return {texto:`¿Con qué prioridad efectiva compitió ${st.respuesta} en este instante?`,
+      opciones:ops, respuesta:sn.prioAct,
+      explicacion:`Su prioridad base es ${sn.prio}, pero el envejecimiento la mejoró a ${sn.prioAct} tras esperar en la cola de listos.`};
+  }
+  return null;
+}
+
 function armarEjercicio(){
   const preg = [], soloDisputadas = $('#ejFiltro').value === 'disputadas';
   sim.pasos.forEach(pa => {
@@ -1011,7 +1054,8 @@ function armarEjercicio(){
     if(soloDisputadas && pa.opciones.length === 1) return;
     preg.push(pa.t);
   });
-  ej = {preguntas:preg, i:0, ok:0, mal:[], respondida:false, elegida:null};
+  ej = {preguntas:preg, i:0, ok:0, mal:[], respondida:false, elegida:null,
+    extra:null, extraOk:false, extraElegida:null};
 }
 
 function renderResumenEj(){
@@ -1035,9 +1079,27 @@ function ejFeedback(st){
   const cuerpo = razones.length
     ? '<ul>' + razones.map(x => `<li>${x}</li>`).join('') + '</ul>'
     : '<ul><li>Ningún proceso está listo: los que quedan están bloqueados en E/S o todavía no llegaron, así que la CPU queda ociosa.</li></ul>';
-  const ultima = ej.i + 1 >= ej.preguntas.length;
-  return `<div class="ej-fb"><b>${acerto ? 'Correcto.' : `No: la respuesta era ${st.respuesta || 'ninguno'}.`}</b>${cuerpo}` +
-    `<div style="margin-top:12px"><button class="btn btn-pri" id="ejSiguiente">${ultima ? 'Ver resultado' : 'Siguiente decisión'}</button></div></div>`;
+  const x = ej.extra, pendiente = x && ej.extraElegida === null;
+  let h = `<div class="ej-fb"><b>${acerto ? 'Correcto.' : `No: la respuesta era ${st.respuesta || 'ninguno'}.`}</b>` +
+    (pendiente ? '' : cuerpo);
+  if(pendiente){
+    h += `<div class="ej-sub"><div class="ej-preg">${x.texto}</div><div class="ej-ops">` +
+      x.opciones.map(v => `<button class="ej-op ej-op2" data-op2="${v}">${v}</button>`).join('') + '</div></div>';
+  } else if(x){
+    h += `<div class="ej-sub"><div class="ej-preg">${x.texto}</div><div class="ej-ops">` +
+      x.opciones.map(v => {
+        let cls = 'ej-op ej-op2';
+        if(v === x.respuesta) cls += ' correcta';
+        else if(v === ej.extraElegida) cls += ' errada';
+        return `<button class="${cls}" disabled>${v}</button>`;
+      }).join('') + '</div>' +
+      `<div class="ej-fb" style="margin-top:10px"><b>${ej.extraOk ? 'Correcto.' : `No: era ${x.respuesta}.`}</b> ${x.explicacion}</div></div>`;
+  }
+  if(!pendiente){
+    const ultima = ej.i + 1 >= ej.preguntas.length;
+    h += `<div style="margin-top:12px"><button class="btn btn-pri" id="ejSiguiente">${ultima ? 'Ver resultado' : 'Siguiente decisión'}</button></div>`;
+  }
+  return h + '</div>';
 }
 
 function renderEjercicio(){
@@ -1059,11 +1121,11 @@ function renderEjercicio(){
     $('#panelMetricas').hidden = false;
     $('#panelResultado').hidden = false;
     $('#ejResumen').innerHTML =
-      `<div class="ej-res">Acertaste ${ej.ok} de ${n} decisiones.</div>` +
+      `<div class="ej-res">Acertaste ${ej.ok} de ${ej.ok + ej.mal.length} respuestas, sobre ${n} ${n === 1 ? 'decisión' : 'decisiones'}.</div>` +
       (ej.mal.length
         ? '<div class="ej-tabla">' + ej.mal.map(m =>
-            `<span class="mono">t=${m.t}</span><span>respondiste <b class="mono">${m.elegida || 'ninguno'}</b></span>` +
-            `<span>correcta <b class="mono">${m.correcta || 'ninguno'}</b></span><span>${m.txt}</span>`).join('') + '</div>'
+            `<span class="mono">t=${m.t}</span><span>respondiste <b class="mono">${m.elegida === null ? 'ninguno' : m.elegida}</b></span>` +
+            `<span>correcta <b class="mono">${m.correcta === null ? 'ninguno' : m.correcta}</b></span><span>${m.txt}</span>`).join('') + '</div>'
         : '<p class="hint">Sin errores: resolviste el lote completo.</p>');
     return;
   }
@@ -1209,19 +1271,41 @@ $('#ejFiltro').addEventListener('change', () => {
 $('#ejReiniciar').addEventListener('click', () => {
   armarEjercicio(); paso = ej.preguntas.length ? ej.preguntas[0] : 0; render();
 });
+$('#ejGenerar').addEventListener('click', () => {
+  const campo = $('#ejSemilla');
+  if(!campo.value.trim()) campo.value = Math.random().toString(36).slice(2, 8);
+  lote = generarLote(campo.value.trim());
+  paso = 0;
+  renderLote(); recalcular();
+});
 $('#ejBarra').addEventListener('click', e => {
+  if(!ej || ejTerminado()) return;
+  const st = sim.pasos[ej.preguntas[ej.i]];
+  const op2 = e.target.closest('.ej-op2');
+  if(op2 && ej.extra && ej.extraElegida === null){
+    ej.extraElegida = +op2.dataset.op2;
+    ej.extraOk = ej.extraElegida === ej.extra.respuesta;
+    if(ej.extraOk) ej.ok++;
+    else ej.mal.push({t:st.t, elegida:ej.extraElegida, correcta:ej.extra.respuesta, txt:ej.extra.explicacion});
+    render();
+    return;
+  }
   const op = e.target.closest('.ej-op');
-  if(op && ej && !ej.respondida){
-    const st = sim.pasos[ej.preguntas[ej.i]];
+  if(op && !ej.respondida){
     ej.elegida = op.dataset.op || null;
     ej.respondida = true;
+    ej.extra = extraDe(st);
+    ej.extraElegida = null; ej.extraOk = false;
     if(ej.elegida === st.respuesta) ej.ok++;
     else ej.mal.push({t:st.t, elegida:ej.elegida, correcta:st.respuesta,
       txt:(st.ev.find(x => /Se despacha/.test(x.txt)) || {txt:'No había ningún proceso listo.'}).txt});
     paso = Math.min(st.t + 1, sim.T);
     render();
-  } else if(e.target.id === 'ejSiguiente'){
+    return;
+  }
+  if(e.target.id === 'ejSiguiente'){
     ej.i++; ej.respondida = false; ej.elegida = null;
+    ej.extra = null; ej.extraElegida = null; ej.extraOk = false;
     paso = ejTerminado() ? sim.T : ej.preguntas[ej.i];
     render();
   }

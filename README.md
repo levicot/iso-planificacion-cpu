@@ -134,6 +134,19 @@ El selector elige entre preguntar **todas las decisiones** o **sólo las
 disputadas** —aquellas con más de un candidato—, que sobre el lote con E/S son
 15 y 11 respectivamente.
 
+Cuando la política lo amerita aparece una **segunda pregunta**, y sólo entonces:
+en VRR, por cuántas unidades recibe la CPU el proceso despachado desde la cola
+auxiliar —donde el error clásico es contestar el quantum completo—; con
+prioridades y envejecimiento, con qué prioridad efectiva compitió, donde el
+error clásico es contestar la prioridad base. Mientras esa pregunta está
+pendiente se retiene la justificación de la primera, que contendría la
+respuesta.
+
+El campo de **semilla** genera un lote al azar de forma reproducible: la misma
+semilla produce siempre el mismo lote. El docente reparte semillas distintas y
+cada alumno recibe un ejercicio diferente pero comparable, que el docente puede
+regenerar para corregir.
+
 ## Compartir ejercicios
 
 El botón **Compartir este ejercicio** genera un código con el lote completo.
