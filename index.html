@@ -158,6 +158,14 @@ td.mejor{color:var(--ink);font-weight:500;background:var(--panel-3);border-radiu
   font-size:10.5px;color:var(--ink-3);font-variant-numeric:tabular-nums}
 .sep{height:1px;background:var(--line);flex:none;margin:4px 0}
 .playhead{position:absolute;top:0;bottom:0;width:2px;background:var(--ink);pointer-events:none;border-radius:1px}
+.mk{position:absolute;width:0;height:0;pointer-events:none;
+  border-left:5px solid transparent;border-right:5px solid transparent}
+.mk-llega{bottom:0;border-bottom:6px solid var(--ink)}
+.mk-fin{top:0;border-top:6px solid var(--ink)}
+.sw-mk{display:inline-block;width:0;height:0;flex:none;
+  border-left:5px solid transparent;border-right:5px solid transparent}
+.sw-mk-l{border-bottom:6px solid var(--ink-2)}
+.sw-mk-f{border-top:6px solid var(--ink-2)}
 
 .cola{display:flex;align-items:center;gap:7px;flex-wrap:wrap;min-height:32px}
 .chip{display:flex;align-items:center;gap:6px;background:var(--chip);color:var(--deep);
@@ -286,6 +294,8 @@ kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--panel-
       <span><i class="sw sw-u"></i>usando E/S</span>
       <span><i class="sw sw-w"></i>esperando el dispositivo</span>
       <span><i class="sw sw-n"></i>sin recursos: espera la CPU</span>
+      <span><i class="sw-mk sw-mk-l"></i>llega</span>
+      <span><i class="sw-mk sw-mk-f"></i>termina</span>
     </div>
   </div>
   <div class="tl-scroll" id="tlScroll" tabindex="0"><div class="tl-body" id="tl"></div></div>
@@ -387,7 +397,9 @@ const LEYENDA = {
   uno:`<span><i class="sw sw-e"></i>usando la CPU</span>
       <span><i class="sw sw-u"></i>usando E/S</span>
       <span><i class="sw sw-w"></i>esperando el dispositivo</span>
-      <span><i class="sw sw-n"></i>sin recursos: espera la CPU</span>`,
+      <span><i class="sw sw-n"></i>sin recursos: espera la CPU</span>
+      <span><i class="sw-mk sw-mk-l"></i>llega</span>
+      <span><i class="sw-mk sw-mk-f"></i>termina</span>`,
   comparar:`<span>Cada bloque es el proceso que ocupa la CPU en ese instante</span>`
 };
 let {devs, lote, cfg} = EJEMPLOS.es();
@@ -651,10 +663,15 @@ function renderTL(){
   sim.devs.forEach(d => { h += filaRecurso(d.n, sim.devL[d.i], k, u, W); });
   h += `<div class="row"><div class="lab"></div><div class="sep" style="width:${W}px"></div></div>`;
   sim.ps.forEach(p => {
+    const m = sim.met.find(x => x.id === p.id);
     h += `<div class="row ${pc(p.i)}"><div class="lab"><b>${p.id}</b></div><div class="track" style="width:${W}px">`;
     h += tramos(sim.linea[p.id].slice(0,k)).map(r =>
       ['ejecutando','usandoES','esperaES'].includes(r.v)
         ? `<div class="blk st-${r.v}" style="left:${r.a*u}px;width:${r.len*u}px"></div>` : '').join('');
+    if(k >= p.llegada)
+      h += `<div class="mk mk-llega" style="left:${p.llegada*u - 5}px" title="${p.id} llega en t=${p.llegada}"></div>`;
+    if(m && k >= m.fin)
+      h += `<div class="mk mk-fin" style="left:${m.fin*u - 5}px" title="${p.id} termina en t=${m.fin}"></div>`;
     h += '</div></div>';
   });
   h += `<div class="playhead" style="left:${96 + k*u}px"></div>`;

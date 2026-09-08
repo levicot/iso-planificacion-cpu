@@ -49,6 +49,10 @@ en cada instante. Abajo, una fila por proceso muestra su ocupación de recursos:
 - **Rayado vertical fino** — en la cola de un dispositivo, bloqueado sin usarlo
 - **Hueco** — sin recursos: listo esperando la CPU, aún no llegó, o ya terminó
 
+Sobre la fila de cada proceso, dos marcas acotan su vida: un triángulo hacia
+arriba en el borde inferior marca el instante en que **llega** al sistema, y
+uno hacia abajo en el borde superior el instante en que **termina**.
+
 ## Convenciones de desempate
 
 Están listadas en la aplicación, bajo las métricas. Las que más suelen generar
