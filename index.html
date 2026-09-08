@@ -153,6 +153,10 @@ td.mejor{color:var(--ink);font-weight:500;background:var(--panel-3);border-radiu
 .rec-blk{background:var(--chip);color:var(--deep);font-family:'IBM Plex Mono',monospace;
   font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .rec-idle{background:transparent;border-bottom:2px dotted var(--line-2);top:auto;height:0;bottom:12px;border-radius:0}
+.rec-so{background:var(--panel-3);background-image:repeating-linear-gradient(45deg,var(--ink-3) 0 1px,transparent 1px 4px);
+  color:var(--ink-2);font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;
+  display:flex;align-items:center;justify-content:center;overflow:hidden}
+.sw-so{background:var(--panel-3);background-image:repeating-linear-gradient(45deg,var(--ink-3) 0 1px,transparent 1px 4px)}
 .axis{position:relative;height:16px;flex:none;margin-bottom:2px}
 .tick{position:absolute;top:0;transform:translateX(-50%);font-family:'IBM Plex Mono',monospace;
   font-size:10.5px;color:var(--ink-3);font-variant-numeric:tabular-nums}
@@ -257,6 +261,10 @@ kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--panel-
         <label for="q">Quantum (unidades de tiempo)</label>
         <input type="number" id="q" min="1" max="20" value="2">
       </div>
+      <div class="campo">
+        <label for="cambio">Costo del cambio de contexto (unidades de tiempo)</label>
+        <input type="number" id="cambio" min="0" max="10" value="0">
+      </div>
       <div class="campo" style="margin-bottom:0">
         <label for="emp">Si en el mismo instante llega un proceso y otro agota su quantum</label>
         <select id="emp">
@@ -342,6 +350,8 @@ kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--panel-
       <li>SJF compara la <b>ráfaga de CPU actual</b>, no la suma de todas las ráfagas del proceso.</li>
       <li>En SRTF la expropiación se evalúa al comienzo de cada unidad de tiempo, y sólo si el candidato tiene un tiempo restante estrictamente menor.</li>
       <li>En Round Robin el quantum se reinicia completo cada vez que un proceso toma la CPU, incluso cuando vuelve de E/S.</li>
+      <li>El costo del cambio de contexto se cobra cada vez que se despacha un proceso distinto del último que usó la CPU. No se cobra en el primer despacho del lote, ni cuando un proceso retoma la CPU sin que otro la haya usado en el medio.</li>
+      <li>El cambio de contexto es atómico: la decisión se toma al empezarlo y no se revisa hasta terminarlo, ni siquiera en SRTF. El proceso elegido sigue <b>listo</b> mientras dura, así que esas unidades cuentan como espera suya.</li>
     </ul>
   </details>
 </section>
@@ -380,7 +390,7 @@ const EJEMPLOS = {
       {llegada:9,  fases:[cpuF(4), ioF(1,3), cpuF(2)]},
       {llegada:16, fases:[cpuF(3)]}
     ],
-    cfg:{alg:'rr', quantum:2, emp:'llegadas'}
+    cfg:{alg:'rr', quantum:2, cambio:0, emp:'llegadas'}
   }),
   cpu: () => ({
     devs:['Disco'],
@@ -391,17 +401,21 @@ const EJEMPLOS = {
       {llegada:3, fases:[cpuF(5)]},
       {llegada:4, fases:[cpuF(3)]}
     ],
-    cfg:{alg:'fcfs', quantum:2, emp:'llegadas'}
+    cfg:{alg:'fcfs', quantum:2, cambio:0, emp:'llegadas'}
   })
 };
-const LEYENDA = {
-  uno:`<span><i class="sw sw-e"></i>usando la CPU</span>
-      <span><i class="sw sw-u"></i>usando E/S</span>
-      <span><i class="sw sw-w"></i>esperando el dispositivo</span>
-      <span><i class="sw sw-n"></i>sin recursos: espera la CPU</span>
-      <span><i class="sw-mk sw-mk-l"></i>llega</span>
-      <span><i class="sw-mk sw-mk-f"></i>termina</span>`,
-  comparar:`<span>Cada bloque es el proceso que ocupa la CPU en ese instante</span>`
+const SO = '#cambio';
+const leyenda = () => {
+  const so = cfg.cambio > 0 ? `<span><i class="sw sw-so"></i>cambio de contexto</span>` : '';
+  return modo === 'uno'
+    ? `<span><i class="sw sw-e"></i>usando la CPU</span>
+       <span><i class="sw sw-u"></i>usando E/S</span>
+       <span><i class="sw sw-w"></i>esperando el dispositivo</span>
+       <span><i class="sw sw-n"></i>sin recursos: espera la CPU</span>
+       ${so}
+       <span><i class="sw-mk sw-mk-l"></i>llega</span>
+       <span><i class="sw-mk sw-mk-f"></i>termina</span>`
+    : `<span>Cada bloque es el proceso que ocupa la CPU en ese instante</span>${so}`;
 };
 let {devs, lote, cfg} = EJEMPLOS.es();
 let modo = 'uno', sims = null;
@@ -447,6 +461,7 @@ function simular(ps, nombres, c){
     inicio:null, fin:null, cpu:0, usoES:0, espCPU:0, espES:0});
   const D = nombres.map((n,i) => ({i, n, ocupa:null, restante:0, cola:[], uso:0}));
   let cola = [], corriendo = null, desalojado = null, pend = [], t = 0;
+  let sobrecarga = 0, entrante = null, ultimo = null, cambios = 0, soTot = 0;
   const linea = {}, cpuL = [], devL = D.map(() => []), pasos = [];
   ps.forEach(p => linea[p.id] = []);
   const LIM = 400;
@@ -485,24 +500,44 @@ function simular(ps, nombres, c){
       desalojado = null;
     } else cola.push(...entran);
 
-    if(corriendo && c.alg === 'srtf' && cola.length){
+    if(sobrecarga === 0 && entrante !== null){
+      const id = entrante; entrante = null;
+      cola.splice(cola.indexOf(id), 1);
+      corriendo = id; ultimo = id;
+      const e = est[id];
+      e.estado = 'ejecutando'; e.q = c.quantum;
+      if(e.inicio === null) e.inicio = t;
+      ev.push({txt:`Termina el cambio de contexto y ${id} toma la CPU`});
+    }
+
+    if(sobrecarga === 0 && corriendo && c.alg === 'srtf' && cola.length){
       const cand = elegir(cola, est, c);
       if(est[cand].restante < est[corriendo].restante){
         ev.push({txt:`${cand} expropia la CPU a ${corriendo}: le restan ${est[cand].restante} unidades contra ${est[corriendo].restante}`});
         est[corriendo].estado = 'listo'; cola.push(corriendo); corriendo = null;
       }
     }
-    if(!corriendo && cola.length){
+    if(sobrecarga === 0 && entrante === null && !corriendo && cola.length){
       const id = elegir(cola, est, c);
       ev.push({txt:motivo(id, est, c, cola)});
-      cola.splice(cola.indexOf(id), 1);
-      corriendo = id;
-      const e = est[id];
-      e.estado = 'ejecutando'; e.q = c.quantum;
-      if(e.inicio === null) e.inicio = t;
+      if(ultimo !== null && ultimo !== id){
+        cambios++;
+        if(c.cambio > 0){
+          sobrecarga = c.cambio; entrante = id;
+          ev.push({txt:`Cambio de contexto: el sistema guarda el estado de ${ultimo} y carga el de ${id}, y la CPU queda ${c.cambio} unidad${c.cambio > 1 ? 'es' : ''} sin trabajo útil`});
+        }
+      }
+      if(sobrecarga === 0){
+        cola.splice(cola.indexOf(id), 1);
+        corriendo = id; ultimo = id;
+        const e = est[id];
+        e.estado = 'ejecutando'; e.q = c.quantum;
+        if(e.inicio === null) e.inicio = t;
+      }
     }
 
-    cpuL[t] = corriendo;
+    cpuL[t] = sobrecarga > 0 ? SO : corriendo;
+    if(sobrecarga > 0) soTot++;
     D.forEach(d => { devL[d.i][t] = d.ocupa; if(d.ocupa) d.uso++; });
     ps.forEach(p => { const e = est[p.id];
       linea[p.id][t] = e.estado;
@@ -512,12 +547,15 @@ function simular(ps, nombres, c){
       else if(e.estado === 'esperaES') e.espES++;
     });
     pasos.push({t, corriendo, cola:cola.slice(), ev,
+      so: sobrecarga > 0 ? {de:ultimo, a:entrante} : null,
       devs:D.map(d => ({i:d.i, n:d.n, ocupa:d.ocupa, restante:d.restante, cola:d.cola.slice()})),
       snap:ps.map(p => { const e = est[p.id];
         return {id:e.id, i:e.i, estado:e.estado, restante:e.restante, f:e.f, tot:e.fases.length,
           dev:e.estado === 'usandoES' || e.estado === 'esperaES' ? e.fases[e.f].dev : null};})});
 
-    if(corriendo){
+    if(sobrecarga > 0){
+      sobrecarga--;
+    } else if(corriendo){
       const e = est[corriendo];
       e.restante--; e.q--;
       if(e.restante === 0){
@@ -541,7 +579,7 @@ function simular(ps, nombres, c){
     D.forEach(d => { if(d.ocupa){ d.restante--; est[d.ocupa].restante--; } });
     t++;
   }
-  pasos.push({t, corriendo:null, cola:[], ev:pend,
+  pasos.push({t, corriendo:null, cola:[], ev:pend, so:null,
     devs:D.map(d => ({i:d.i, n:d.n, ocupa:null, restante:0, cola:[]})),
     snap:ps.map(p => { const e = est[p.id];
       return {id:e.id, i:e.i, estado:e.estado, restante:0, f:e.f, tot:e.fases.length, dev:null};})});
@@ -549,10 +587,10 @@ function simular(ps, nombres, c){
   const met = ps.map(p => { const e = est[p.id];
     return {id:e.id, i:e.i, llegada:e.llegada, cpu:e.cpu, es:e.usoES, espCPU:e.espCPU, espES:e.espES,
       fin:e.fin, retorno:e.fin - e.llegada, respuesta:e.inicio - e.llegada};});
-  return {T:t, ps, devs:D, linea, cpuL, devL, pasos, met,
-    uso:t ? cpuL.filter(x => x).length / t : 0,
+  return {T:t, ps, devs:D, linea, cpuL, devL, pasos, met, cambios, soTot,
+    uso:t ? cpuL.filter(x => x && x !== SO).length / t : 0,
     usoDev:D.map(d => t ? d.uso / t : 0),
-    cambios:cpuL.filter((x,i) => i && x && x !== cpuL[i-1]).length};
+    sobrecarga:t ? soTot / t : 0};
 }
 
 const pc = i => 'pc' + ((i % 6) + 1);
@@ -642,6 +680,7 @@ function tramos(arr){
 function filaRecurso(lab, serie, k, u, W){
   const cont = tramos(serie.slice(0,k)).map(r => {
     if(!r.v) return `<div class="blk rec-idle" style="left:${r.a*u}px;width:${r.len*u}px"></div>`;
+    if(r.v === SO) return `<div class="blk rec-so" style="left:${r.a*u}px;width:${r.len*u}px" title="Cambio de contexto">${r.len*u >= 26 ? 'SO' : ''}</div>`;
     const p = sim.ps.find(x => x.id === r.v);
     return `<div class="blk rec-blk ${pc(p.i)}" style="left:${r.a*u}px;width:${r.len*u}px">${r.len*u >= 22 ? r.v : ''}</div>`;
   }).join('');
@@ -713,7 +752,9 @@ function renderPanel(){
 
   $('#eventos').innerHTML = st.ev.length
     ? '<ul>' + st.ev.map(e => `<li><span class="badge">t=${st.t}</span><span>${e.txt}</span></li>`).join('') + '</ul>'
-    : '<span class="vacio">Sin cambios: siguen ejecutando los mismos procesos que en el instante anterior.</span>';
+    : st.so
+      ? `<span class="vacio">El sistema operativo sigue cambiando de contexto: guarda el estado de ${st.so.de} y carga el de ${st.so.a}. La CPU no avanza ningún proceso.</span>`
+      : '<span class="vacio">Sin cambios: siguen ejecutando los mismos procesos que en el instante anterior.</span>';
 }
 
 function renderMetricas(){
@@ -727,6 +768,7 @@ function renderMetricas(){
   $('#global').innerHTML =
     `<div><span class="k">Tiempo total</span><span class="v">${sim.T}</span></div>` +
     `<div><span class="k">Uso de CPU</span><span class="v">${(sim.uso*100).toFixed(0)}%</span></div>` +
+    (sim.soTot ? `<div><span class="k">Sobrecarga</span><span class="v">${(sim.sobrecarga*100).toFixed(0)}%</span></div>` : '') +
     sim.devs.map(d => `<div><span class="k">Uso de ${esc(d.n)}</span><span class="v">${(sim.usoDev[d.i]*100).toFixed(0)}%</span></div>`).join('') +
     `<div><span class="k">Cambios de contexto</span><span class="v">${sim.cambios}</span></div>`;
 }
@@ -747,6 +789,7 @@ function recalcular(){
   $('#panelMetricas').hidden = modo !== 'uno';
   $('#panelCmp').hidden = modo === 'uno';
   $('#campoQ').style.display = cfg.alg === 'rr' ? 'flex' : 'none';
+  $('#leyenda').innerHTML = leyenda();
   $('#codigo').value = codificar();
   guardar();
   render();
@@ -781,6 +824,7 @@ function renderCmp(){
       `<div class="track track-rec" style="width:${s.T*u}px">` +
       tramos(s.cpuL.slice(0, k)).map(r => {
         if(!r.v) return `<div class="blk rec-idle" style="left:${r.a*u}px;width:${r.len*u}px"></div>`;
+        if(r.v === SO) return `<div class="blk rec-so" style="left:${r.a*u}px;width:${r.len*u}px" title="Cambio de contexto">${r.len*u >= 26 ? 'SO' : ''}</div>`;
         const pr = s.ps.find(x => x.id === r.v);
         return `<div class="blk rec-blk ${pc(pr.i)}" style="left:${r.a*u}px;width:${r.len*u}px">${r.len*u >= 22 ? r.v : ''}</div>`;
       }).join('') + '</div></div>';
@@ -833,6 +877,7 @@ function decodificar(s){
   const o = JSON.parse(decodeURIComponent(atob(s.trim())));
   if(!ALGS.some(a => a.id === o.c.alg)) throw 0;
   const c = {alg:o.c.alg, quantum:Math.max(1, Math.min(20, +o.c.quantum || 2)),
+    cambio:Math.max(0, Math.min(10, +o.c.cambio || 0)),
     emp:o.c.emp === 'desalojado' ? 'desalojado' : 'llegadas'};
   let d, l;
   if(o.v === 2){
@@ -878,10 +923,10 @@ document.querySelectorAll('.seg-b').forEach(b => b.addEventListener('click', e =
   if(m === modo) return;
   modo = m; pausar();
   document.querySelectorAll('.seg-b').forEach(x => x.classList.toggle('activo', x.dataset.modo === modo));
-  $('#leyenda').innerHTML = LEYENDA[modo];
   recalcular();
 }));
 $('#q').addEventListener('input', e => { cfg.quantum = Math.max(1, Math.min(20, +e.target.value || 1)); recalcular(); });
+$('#cambio').addEventListener('input', e => { cfg.cambio = Math.max(0, Math.min(10, +e.target.value || 0)); recalcular(); });
 $('#emp').addEventListener('change', e => { cfg.emp = e.target.value; recalcular(); });
 $('#ini').addEventListener('click', () => { pausar(); irA(0); });
 $('#fin').addEventListener('click', () => { pausar(); irA(maxPaso()); });
@@ -916,7 +961,7 @@ let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() 
 
 function refrescarControles(){
   renderDevs(); renderLote(); renderAlgs();
-  $('#q').value = cfg.quantum; $('#emp').value = cfg.emp;
+  $('#q').value = cfg.quantum; $('#cambio').value = cfg.cambio; $('#emp').value = cfg.emp;
 }
 cargarGuardado();
 refrescarControles();

@@ -18,6 +18,13 @@ reloj de a una unidad de tiempo para ver qué decide el planificador y por qué.
 | SRTF | Sí | Menor tiempo restante |
 | Round Robin | Sí (por quantum) | Turno rotativo, quantum configurable |
 
+**Costo del cambio de contexto.** Configurable, 0 por defecto. Con un costo
+mayor que cero, cada despacho de un proceso distinto del último que usó la CPU
+inserta una franja de sobrecarga en la que la CPU no avanza ningún proceso.
+Es lo que permite ver por qué un quantum chico es caro: sobre el lote con CPU
+disputada y costo 1, Round Robin con quantum 1 gasta el 48 % del tiempo
+cambiando de contexto, y con quantum 8 degenera exactamente en FCFS.
+
 **Dispositivos de E/S.** Hasta tres dispositivos con nombre. Cada uno atiende a
 un proceso por vez con su propia cola FIFO, así que un proceso bloqueado puede
 estar *esperando el dispositivo* o *usándolo*, y el diagrama los distingue.
@@ -69,6 +76,11 @@ discusión:
 - SJF compara la ráfaga de CPU actual, no la suma de todas las del proceso.
 - En Round Robin, si en el mismo instante llega un proceso y otro agota su
   quantum, el orden es configurable desde la interfaz.
+- El costo del cambio de contexto se cobra al despachar un proceso distinto del
+  último que usó la CPU: nunca en el primer despacho del lote, ni cuando un
+  proceso retoma la CPU sin que otro la haya usado en el medio.
+- El cambio es atómico —ni SRTF lo interrumpe— y el proceso elegido sigue listo
+  mientras dura, así que esas unidades cuentan como espera suya.
 
 ## Compartir ejercicios
 
