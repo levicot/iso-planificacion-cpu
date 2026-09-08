@@ -269,6 +269,7 @@ kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--panel-
     <div id="lote"></div>
     <div class="filas-acc">
       <button class="btn" id="add">Agregar proceso</button>
+      <button class="btn" id="limpiar">Limpiar</button>
       <button class="btn" id="ejES">Lote con E/S</button>
       <button class="btn" id="ejCPU">Lote con CPU disputada</button>
       <button class="btn" id="ejPrio">Lote con inanición</button>
@@ -1260,8 +1261,13 @@ $('#addDev').addEventListener('click', () => {
 });
 function cargarEjemplo(k){
   const e = EJEMPLOS[k](); devs = e.devs; lote = e.lote; cfg = e.cfg; paso = 0;
-  refrescarControles(); recalcular(); irA(Math.round(maxPaso() * 0.45));
+  refrescarControles(); recalcular(); irA(0);
 }
+$('#limpiar').addEventListener('click', () => {
+  lote = [{llegada:0, prio:0, fases:[cpuF(1)]}];
+  paso = 0;
+  renderLote(); recalcular(); irA(0);
+});
 $('#ejES').addEventListener('click', () => cargarEjemplo('es'));
 $('#ejCPU').addEventListener('click', () => cargarEjemplo('cpu'));
 $('#ejPrio').addEventListener('click', () => cargarEjemplo('prio'));
@@ -1360,7 +1366,7 @@ function refrescarControles(){
 cargarGuardado();
 refrescarControles();
 recalcular();
-irA(Math.round(maxPaso() * 0.45));
+irA(0);
 </script>
 
 </body>
