@@ -297,7 +297,7 @@ kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--panel-
     <div class="seg" role="group" aria-label="Modo de la línea de tiempo">
       <button class="seg-b activo" data-modo="uno">Un algoritmo, paso a paso</button>
       <button class="seg-b" data-modo="comparar">Comparar los cuatro</button>
-      <button class="seg-b" data-modo="quantums">Comparar quantums</button>
+      <button class="seg-b" id="segQ" data-modo="quantums">Comparar quantums</button>
     </div>
     <div class="legend" id="leyenda">
       <span><i class="sw sw-e"></i>usando la CPU</span>
@@ -784,6 +784,8 @@ function recalcular(){
     else el.style.display = 'none';
   });
   if(!v.ok) return;
+  if(modo === 'quantums' && cfg.alg !== 'rr') modo = 'uno';
+  sincronizarModo();
   sim = simular(v.ps, devs, cfg);
   sims = modo === 'comparar'
     ? ALGS.map(a => ({nom:a.id === 'rr' ? `RR (q=${cfg.quantum})` : a.n, s:simular(v.ps, devs, {...cfg, alg:a.id})}))
@@ -806,6 +808,10 @@ function renderReloj(){
   $('#reloj').innerHTML = `t=${Math.min(paso, mx)}` + (paso >= mx ? ' <small>fin</small>' : '');
   $('#scrub').max = mx;
   $('#scrub').value = paso;
+}
+function sincronizarModo(){
+  $('#segQ').hidden = cfg.alg !== 'rr';
+  document.querySelectorAll('.seg-b').forEach(x => x.classList.toggle('activo', x.dataset.modo === modo));
 }
 function render(){
   renderReloj();
@@ -932,7 +938,6 @@ document.querySelectorAll('.seg-b').forEach(b => b.addEventListener('click', e =
   const m = e.currentTarget.dataset.modo;
   if(m === modo) return;
   modo = m; pausar();
-  document.querySelectorAll('.seg-b').forEach(x => x.classList.toggle('activo', x.dataset.modo === modo));
   recalcular();
 }));
 $('#q').addEventListener('input', e => { cfg.quantum = Math.max(1, Math.min(20, +e.target.value || 1)); recalcular(); });
