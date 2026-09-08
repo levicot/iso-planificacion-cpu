@@ -29,13 +29,19 @@ cambiando de contexto, y con quantum 8 degenera exactamente en FCFS.
 un proceso por vez con su propia cola FIFO, así que un proceso bloqueado puede
 estar *esperando el dispositivo* o *usándolo*, y el diagrama los distingue.
 
-## Modo comparación
+## Modos de comparación
 
-La línea de tiempo tiene dos modos. En **Comparar los cuatro**, las cuatro
+La línea de tiempo tiene tres modos. En **Comparar los cuatro**, las cuatro
 políticas resuelven el mismo lote sobre un reloj compartido: se ve una franja
 de ocupación de CPU por algoritmo, todas en la misma escala, y una tabla con
 espera media, peor espera individual, respuesta, retorno, cambios de contexto
 y tiempo total, resaltando el mejor valor de cada columna.
+
+En **Comparar quantums** el barrido es sobre Round Robin con quantum 1, 2, 4
+y 8. Junto con el costo del cambio de contexto es donde se ve la curva
+completa: sobre el lote con CPU disputada y costo 1, el quantum 1 consigue la
+mejor respuesta media (3.60 contra 10.60) y pierde en todas las demás
+columnas, mientras que el quantum 8 produce exactamente los números de FCFS.
 
 ## Lotes de ejemplo
 

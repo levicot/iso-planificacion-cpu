@@ -297,6 +297,7 @@ kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--panel-
     <div class="seg" role="group" aria-label="Modo de la línea de tiempo">
       <button class="seg-b activo" data-modo="uno">Un algoritmo, paso a paso</button>
       <button class="seg-b" data-modo="comparar">Comparar los cuatro</button>
+      <button class="seg-b" data-modo="quantums">Comparar quantums</button>
     </div>
     <div class="legend" id="leyenda">
       <span><i class="sw sw-e"></i>usando la CPU</span>
@@ -311,9 +312,9 @@ kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--panel-
 </section>
 
 <section class="panel" id="panelCmp" hidden>
-  <span class="eyebrow">Comparación de políticas</span>
+  <span class="eyebrow" id="cmpTitulo">Comparación de políticas</span>
   <div class="tabla-wrap"><table id="tablaCmp"></table></div>
-  <p class="hint">Las cuatro políticas resuelven el mismo lote sobre un reloj compartido. Está resaltado el mejor valor de cada columna: ninguna gana en todas, y ahí está el punto.</p>
+  <p class="hint" id="cmpNota"></p>
 </section>
 
 <div class="abajo" id="panelesUno">
@@ -405,6 +406,7 @@ const EJEMPLOS = {
   })
 };
 const SO = '#cambio';
+const QUANTUMS = [1, 2, 4, 8];
 const leyenda = () => {
   const so = cfg.cambio > 0 ? `<span><i class="sw sw-so"></i>cambio de contexto</span>` : '';
   return modo === 'uno'
@@ -783,12 +785,16 @@ function recalcular(){
   });
   if(!v.ok) return;
   sim = simular(v.ps, devs, cfg);
-  sims = modo === 'comparar' ? ALGS.map(a => ({a, s:simular(v.ps, devs, {...cfg, alg:a.id})})) : null;
+  sims = modo === 'comparar'
+    ? ALGS.map(a => ({nom:a.id === 'rr' ? `RR (q=${cfg.quantum})` : a.n, s:simular(v.ps, devs, {...cfg, alg:a.id})}))
+    : modo === 'quantums'
+    ? QUANTUMS.map(q => ({nom:`RR q=${q}`, s:simular(v.ps, devs, {...cfg, alg:'rr', quantum:q})}))
+    : null;
   paso = Math.min(paso, maxPaso());
   $('#panelesUno').hidden = modo !== 'uno';
   $('#panelMetricas').hidden = modo !== 'uno';
   $('#panelCmp').hidden = modo === 'uno';
-  $('#campoQ').style.display = cfg.alg === 'rr' ? 'flex' : 'none';
+  $('#campoQ').style.display = (cfg.alg === 'rr' && modo !== 'quantums') ? 'flex' : 'none';
   $('#leyenda').innerHTML = leyenda();
   $('#codigo').value = codificar();
   guardar();
@@ -806,8 +812,6 @@ function render(){
   if(modo === 'uno'){ renderTL(); renderPanel(); renderMetricas(); }
   else renderCmp();
 }
-const nombreAlg = a => a.id === 'rr' ? `RR (q=${cfg.quantum})` : a.n;
-
 function renderCmp(){
   const Tmax = Math.max(...sims.map(x => x.s.T));
   const disp = Math.max(220, $('#tlScroll').clientWidth - 100);
@@ -818,9 +822,9 @@ function renderCmp(){
   if(Tmax % salto !== 0 && (Tmax % salto) * u > 16) ejes += `<span class="tick" style="left:${Tmax*u}px">${Tmax}</span>`;
 
   let h = `<div class="row"><div class="lab-cmp"></div><div class="axis" style="width:${Tmax*u}px">${ejes}</div></div>`;
-  sims.forEach(({a, s}) => {
+  sims.forEach(({nom, s}) => {
     const k = Math.min(paso, s.T);
-    h += `<div class="row"><div class="lab-cmp"><b>${nombreAlg(a)}</b><span>fin ${s.T}</span></div>` +
+    h += `<div class="row"><div class="lab-cmp"><b>${nom}</b><span>fin ${s.T}</span></div>` +
       `<div class="track track-rec" style="width:${s.T*u}px">` +
       tramos(s.cpuL.slice(0, k)).map(r => {
         if(!r.v) return `<div class="blk rec-idle" style="left:${r.a*u}px;width:${r.len*u}px"></div>`;
@@ -835,9 +839,9 @@ function renderCmp(){
   const cols = [{k:'espera', t:'Espera media', d:2}, {k:'peor', t:'Peor espera', d:0},
     {k:'resp', t:'Respuesta media', d:2}, {k:'retorno', t:'Retorno medio', d:2},
     {k:'cambios', t:'Cambios de contexto', d:0}, {k:'T', t:'Tiempo total', d:0}];
-  const filas = sims.map(({a, s}) => {
+  const filas = sims.map(({nom, s}) => {
     const n = s.met.length, m = f => s.met.reduce((x, y) => x + y[f], 0) / n;
-    return {nom:nombreAlg(a), espera:m('espCPU'), peor:Math.max(...s.met.map(x => x.espCPU)),
+    return {nom, espera:m('espCPU'), peor:Math.max(...s.met.map(x => x.espCPU)),
       resp:m('respuesta'), retorno:m('retorno'), cambios:s.cambios, T:s.T};
   });
   const mejor = {};
@@ -845,7 +849,13 @@ function renderCmp(){
     const v = filas.map(f => f[c.k]), mn = Math.min(...v);
     mejor[c.k] = mn === Math.max(...v) ? null : mn;
   });
-  $('#tablaCmp').innerHTML = '<thead><tr><th>Política</th>' +
+  $('#cmpTitulo').textContent = modo === 'quantums' ? 'Comparación de quantums' : 'Comparación de políticas';
+  $('#cmpNota').innerHTML = modo === 'quantums'
+    ? (cfg.cambio > 0
+        ? `Las cuatro corridas son Round Robin sobre el mismo lote, con un costo de cambio de contexto de ${cfg.cambio}. Un quantum chico responde antes pero paga más sobrecarga; uno grande degenera en FCFS.`
+        : 'Las cuatro corridas son Round Robin sobre el mismo lote. Con costo de cambio de contexto en 0 el tiempo total es el mismo en todas y sólo cambian la espera y la respuesta: subí el costo para ver lo que cuesta un quantum chico.')
+    : 'Las cuatro políticas resuelven el mismo lote sobre un reloj compartido. Está resaltado el mejor valor de cada columna: ninguna gana en todas, y ahí está el punto.';
+  $('#tablaCmp').innerHTML = `<thead><tr><th>${modo === 'quantums' ? 'Quantum' : 'Política'}</th>` +
     cols.map(c => `<th>${c.t}</th>`).join('') + '</tr></thead><tbody>' +
     filas.map(f => `<tr><td class="id">${f.nom}</td>` +
       cols.map(c => `<td class="${f[c.k] === mejor[c.k] ? 'mejor' : ''}">${f[c.k].toFixed(c.d)}</td>`).join('') +
