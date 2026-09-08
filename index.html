@@ -249,6 +249,7 @@ kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--panel-
       <button class="btn" id="add">Agregar proceso</button>
       <button class="btn" id="ejES">Lote con E/S</button>
       <button class="btn" id="ejCPU">Lote con CPU disputada</button>
+      <button class="btn" id="ejPrio">Lote con inanición</button>
     </div>
     <p class="hint">Cada proceso es una secuencia que empieza y termina usando la CPU. <b>Agregar E/S</b> suma un pedido a un dispositivo y la ráfaga de CPU que viene después, así la secuencia siempre queda bien formada.</p>
   </section>
@@ -260,6 +261,11 @@ kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--panel-
       <div class="campo" id="campoQ" style="margin-top:12px">
         <label for="q">Quantum (unidades de tiempo)</label>
         <input type="number" id="q" min="1" max="20" value="2">
+      </div>
+      <div class="campo" id="campoEnvej">
+        <label for="envej">Envejecimiento: mejora un nivel cada N unidades esperando la CPU (0 = sin envejecimiento)</label>
+        <input type="number" id="envej" min="0" max="20" value="0">
+        <span class="hint" style="margin-top:0">El número más bajo es la prioridad más urgente.</span>
       </div>
       <div class="campo">
         <label for="cambio">Costo del cambio de contexto (unidades de tiempo)</label>
@@ -296,7 +302,7 @@ kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--panel-
   <div class="tl-head">
     <div class="seg" role="group" aria-label="Modo de la línea de tiempo">
       <button class="seg-b activo" data-modo="uno">Un algoritmo, paso a paso</button>
-      <button class="seg-b" data-modo="comparar">Comparar los cuatro</button>
+      <button class="seg-b" data-modo="comparar">Comparar políticas</button>
       <button class="seg-b" id="segQ" data-modo="quantums">Comparar quantums</button>
     </div>
     <div class="legend" id="leyenda">
@@ -351,7 +357,10 @@ kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--panel-
       <li>SJF compara la <b>ráfaga de CPU actual</b>, no la suma de todas las ráfagas del proceso.</li>
       <li>En SRTF la expropiación se evalúa al comienzo de cada unidad de tiempo, y sólo si el candidato tiene un tiempo restante estrictamente menor.</li>
       <li>En Round Robin el quantum se reinicia completo cada vez que un proceso toma la CPU, incluso cuando vuelve de E/S.</li>
+      <li>En las políticas por prioridad el número más bajo es el más urgente, y ante un empate gana el que lleva más tiempo en la cola.</li>
+      <li>El envejecimiento cuenta sólo el tiempo en la cola de listos, no el de E/S: lo que corrige es la inanición de CPU. La prioridad mejorada vuelve a su valor base en cuanto el proceso toma la CPU, para que la promoción no se acumule indefinidamente.</li>
       <li>El costo del cambio de contexto se cobra cada vez que se despacha un proceso distinto del último que usó la CPU. No se cobra en el primer despacho del lote, ni cuando un proceso retoma la CPU sin que otro la haya usado en el medio.</li>
+      <li>Un proceso recién despachado ejecuta al menos una unidad de tiempo antes de poder ser expropiado. Sin esa regla, con costo de cambio y envejecimiento el sistema puede quedar cambiando de contexto indefinidamente sin avanzar ningún proceso.</li>
       <li>El cambio de contexto es atómico: la decisión se toma al empezarlo y no se revisa hasta terminarlo, ni siquiera en SRTF. El proceso elegido sigue <b>listo</b> mientras dura, así que esas unidades cuentan como espera suya.</li>
     </ul>
   </details>
@@ -378,8 +387,12 @@ const ALGS = [
   {id:'fcfs', n:'FCFS', d:'Por orden de llegada, sin expropiación'},
   {id:'sjf',  n:'SJF',  d:'La ráfaga más corta primero, sin expropiación'},
   {id:'srtf', n:'SRTF', d:'Menor tiempo restante, con expropiación'},
+  {id:'prio', n:'Prioridad', d:'La más urgente primero, sin expropiación'},
+  {id:'prioE',n:'Prioridad expropiativa', d:'La más urgente primero, con expropiación'},
   {id:'rr',   n:'RR',   d:'Turno rotativo con quantum fijo'}
 ];
+const usaPrio = a => a === 'prio' || a === 'prioE';
+const MAXPRIO = 9;
 const cpuF = d => ({t:'cpu', d});
 const ioF = (dev,d) => ({t:'io', dev, d});
 const EJEMPLOS = {
@@ -391,7 +404,7 @@ const EJEMPLOS = {
       {llegada:9,  fases:[cpuF(4), ioF(1,3), cpuF(2)]},
       {llegada:16, fases:[cpuF(3)]}
     ],
-    cfg:{alg:'rr', quantum:2, cambio:0, emp:'llegadas'}
+    cfg:{alg:'rr', quantum:2, cambio:0, envej:0, emp:'llegadas'}
   }),
   cpu: () => ({
     devs:['Disco'],
@@ -402,7 +415,19 @@ const EJEMPLOS = {
       {llegada:3, fases:[cpuF(5)]},
       {llegada:4, fases:[cpuF(3)]}
     ],
-    cfg:{alg:'fcfs', quantum:2, cambio:0, emp:'llegadas'}
+    cfg:{alg:'fcfs', quantum:2, cambio:0, envej:0, emp:'llegadas'}
+  }),
+  prio: () => ({
+    devs:['Disco'],
+    lote:[
+      {llegada:0,  prio:0, fases:[cpuF(3)]},
+      {llegada:1,  prio:5, fases:[cpuF(5)]},
+      {llegada:2,  prio:1, fases:[cpuF(3)]},
+      {llegada:5,  prio:1, fases:[cpuF(3)]},
+      {llegada:8,  prio:1, fases:[cpuF(3)]},
+      {llegada:11, prio:1, fases:[cpuF(3)]}
+    ],
+    cfg:{alg:'prio', quantum:2, cambio:0, envej:0, emp:'llegadas'}
   })
 };
 const SO = '#cambio';
@@ -428,13 +453,15 @@ function validar(){
   lote.forEach((p,i) => {
     const lleg = Number(p.llegada);
     let e = null;
+    const pr = Number(p.prio || 0);
     if(!Number.isInteger(lleg) || lleg < 0 || lleg > 99) e = 'La llegada tiene que ser un entero entre 0 y 99';
+    else if(!Number.isInteger(pr) || pr < 0 || pr > MAXPRIO) e = `La prioridad tiene que ser un entero entre 0 y ${MAXPRIO}`;
     else for(const f of p.fases){
       const d = Number(f.d);
       if(!Number.isInteger(d) || d < 1 || d > MAXDUR){ e = `Cada ráfaga tiene que durar entre 1 y ${MAXDUR} unidades`; break; }
     }
     if(e) errs[i] = e;
-    else ps.push({id:'P'+(i+1), i, llegada:lleg,
+    else ps.push({id:'P'+(i+1), i, llegada:lleg, prio:pr,
       fases:p.fases.map(f => f.t === 'cpu' ? cpuF(Number(f.d)) : ioF(Math.min(f.dev, devs.length-1), Number(f.d)))});
   });
   return {errs, ps, ok:Object.keys(errs).length === 0 && ps.length > 0};
@@ -442,16 +469,22 @@ function validar(){
 
 function elegir(cola, est, c){
   if(c.alg === 'fcfs' || c.alg === 'rr') return cola[0];
+  const v = usaPrio(c.alg) ? (id => est[id].prioAct) : (id => est[id].restante);
   let mejor = cola[0];
-  for(const id of cola) if(est[id].restante < est[mejor].restante) mejor = id;
+  for(const id of cola) if(v(id) < v(mejor)) mejor = id;
   return mejor;
 }
 function motivo(id, est, c, cola){
   const e = est[id], rivales = cola.filter(x => x !== id);
   if(!rivales.length) return `Se despacha ${id}: es el único proceso listo`;
-  const lista = rivales.map(x => `${x}:${est[x].restante}`).join(', ');
   if(c.alg === 'fcfs') return `Se despacha ${id}: está a la cabeza de la cola, es el que llegó primero de los que esperan`;
   if(c.alg === 'rr')   return `Se despacha ${id} por un quantum de ${c.quantum}: está a la cabeza de la cola circular`;
+  if(usaPrio(c.alg)){
+    const lista = rivales.map(x => `${x}:${est[x].prioAct}`).join(', ');
+    const env = e.prioAct !== e.prio ? ` (base ${e.prio}, mejorada por envejecimiento)` : '';
+    return `Se despacha ${id}: su prioridad ${e.prioAct}${env} es la más urgente entre los listos (${lista})`;
+  }
+  const lista = rivales.map(x => `${x}:${est[x].restante}`).join(', ');
   if(c.alg === 'sjf')  return `Se despacha ${id}: su ráfaga de CPU (${e.restante}) es la más corta entre los listos (${lista})`;
   return `Se despacha ${id}: su tiempo restante (${e.restante}) es el menor entre los listos (${lista})`;
 }
@@ -460,6 +493,7 @@ function simular(ps, nombres, c){
   const est = {};
   ps.forEach(p => est[p.id] = {id:p.id, i:p.i, llegada:p.llegada, fases:p.fases,
     f:0, restante:p.fases[0].d, estado:'nuevo', q:0, dev:null,
+    prio:p.prio, prioAct:p.prio, envej:0,
     inicio:null, fin:null, cpu:0, usoES:0, espCPU:0, espES:0});
   const D = nombres.map((n,i) => ({i, n, ocupa:null, restante:0, cola:[], uso:0}));
   let cola = [], corriendo = null, desalojado = null, pend = [], t = 0;
@@ -502,20 +536,28 @@ function simular(ps, nombres, c){
       desalojado = null;
     } else cola.push(...entran);
 
+    let reciCargado = false;
     if(sobrecarga === 0 && entrante !== null){
       const id = entrante; entrante = null;
+      reciCargado = true;
       cola.splice(cola.indexOf(id), 1);
       corriendo = id; ultimo = id;
       const e = est[id];
       e.estado = 'ejecutando'; e.q = c.quantum;
+      e.prioAct = e.prio; e.envej = 0;
       if(e.inicio === null) e.inicio = t;
       ev.push({txt:`Termina el cambio de contexto y ${id} toma la CPU`});
     }
 
-    if(sobrecarga === 0 && corriendo && c.alg === 'srtf' && cola.length){
+    if(!reciCargado && sobrecarga === 0 && corriendo && (c.alg === 'srtf' || c.alg === 'prioE') && cola.length){
       const cand = elegir(cola, est, c);
-      if(est[cand].restante < est[corriendo].restante){
-        ev.push({txt:`${cand} expropia la CPU a ${corriendo}: le restan ${est[cand].restante} unidades contra ${est[corriendo].restante}`});
+      const gana = c.alg === 'prioE'
+        ? est[cand].prioAct < est[corriendo].prioAct
+        : est[cand].restante < est[corriendo].restante;
+      if(gana){
+        ev.push({txt: c.alg === 'prioE'
+          ? `${cand} expropia la CPU a ${corriendo}: su prioridad ${est[cand].prioAct} es más urgente que la ${est[corriendo].prioAct} de ${corriendo}`
+          : `${cand} expropia la CPU a ${corriendo}: le restan ${est[cand].restante} unidades contra ${est[corriendo].restante}`});
         est[corriendo].estado = 'listo'; cola.push(corriendo); corriendo = null;
       }
     }
@@ -534,6 +576,7 @@ function simular(ps, nombres, c){
         corriendo = id; ultimo = id;
         const e = est[id];
         e.estado = 'ejecutando'; e.q = c.quantum;
+        e.prioAct = e.prio; e.envej = 0;
         if(e.inicio === null) e.inicio = t;
       }
     }
@@ -553,7 +596,17 @@ function simular(ps, nombres, c){
       devs:D.map(d => ({i:d.i, n:d.n, ocupa:d.ocupa, restante:d.restante, cola:d.cola.slice()})),
       snap:ps.map(p => { const e = est[p.id];
         return {id:e.id, i:e.i, estado:e.estado, restante:e.restante, f:e.f, tot:e.fases.length,
+          prio:e.prio, prioAct:e.prioAct,
           dev:e.estado === 'usandoES' || e.estado === 'esperaES' ? e.fases[e.f].dev : null};})});
+
+    if(usaPrio(c.alg) && c.envej > 0) ps.forEach(p => { const e = est[p.id];
+      if(e.estado !== 'listo') return;
+      e.envej++;
+      if(e.envej % c.envej === 0 && e.prioAct > 0){
+        e.prioAct--;
+        pend.push({txt:`${e.id} lleva ${e.envej} unidades esperando en la cola de listos y su prioridad mejora de ${e.prioAct+1} a ${e.prioAct} por envejecimiento`});
+      }
+    });
 
     if(sobrecarga > 0){
       sobrecarga--;
@@ -584,7 +637,7 @@ function simular(ps, nombres, c){
   pasos.push({t, corriendo:null, cola:[], ev:pend, so:null,
     devs:D.map(d => ({i:d.i, n:d.n, ocupa:null, restante:0, cola:[]})),
     snap:ps.map(p => { const e = est[p.id];
-      return {id:e.id, i:e.i, estado:e.estado, restante:0, f:e.f, tot:e.fases.length, dev:null};})});
+      return {id:e.id, i:e.i, estado:e.estado, restante:0, f:e.f, tot:e.fases.length, prio:e.prio, prioAct:e.prio, dev:null};})});
 
   const met = ps.map(p => { const e = est[p.id];
     return {id:e.id, i:e.i, llegada:e.llegada, cpu:e.cpu, es:e.usoES, espCPU:e.espCPU, espES:e.espES,
@@ -611,6 +664,7 @@ function renderLote(){
       <div class="proc-top">
         <span class="pid"><i class="dot"></i>P${i+1}</span>
         <label>llega en <input type="number" min="0" max="99" value="${p.llegada}" data-i="${i}" data-k="llegada" aria-label="Instante de llegada de P${i+1}"></label>
+        <label class="campo-prio">prioridad <input type="number" min="0" max="${MAXPRIO}" value="${p.prio || 0}" data-i="${i}" data-k="prio" aria-label="Prioridad de P${i+1}; el número más bajo es el más urgente"></label>
         <span class="sp"></span>
         ${lote.length > 1 ? `<button class="btn-x" data-del="${i}" aria-label="Eliminar P${i+1}">&times;</button>` : ''}
       </div>
@@ -626,7 +680,7 @@ function renderLote(){
 
   cont.querySelectorAll('input,select').forEach(el => el.addEventListener('input', e => {
     const {i, j, k} = e.target.dataset;
-    if(k === 'llegada') lote[+i].llegada = e.target.value === '' ? '' : +e.target.value;
+    if(j === undefined) lote[+i][k] = e.target.value === '' ? '' : +e.target.value;
     else lote[+i].fases[+j][k] = e.target.value === '' ? '' : +e.target.value;
     recalcular();
   }));
@@ -731,9 +785,13 @@ function renderPanel(){
   const idxDe = id => sim.ps.find(p => p.id === id).i;
   const chip = (id, txt) => `<span class="chip ${pc(idxDe(id))}">${id} <em>${txt}</em></span>`;
 
+  const prio = usaPrio(cfg.alg);
+  const dato = sn => prio
+    ? 'prio ' + sn.prioAct + (sn.prioAct !== sn.prio ? ` (base ${sn.prio})` : '')
+    : 'restan ' + sn.restante;
   $('#cola').innerHTML = st.cola.length
     ? '<span class="cabeza">cabeza →</span>' + st.cola.map(id =>
-        chip(id, 'restan ' + st.snap.find(x => x.id === id).restante)).join('')
+        chip(id, dato(st.snap.find(x => x.id === id)))).join('')
     : '<span class="vacio">No hay procesos esperando la CPU en este instante.</span>';
 
   $('#devEst').innerHTML = st.devs.map(d => `<div class="dev-est">
@@ -744,7 +802,8 @@ function renderPanel(){
 
   $('#estados').innerHTML = st.snap.map(s => {
     let det = '';
-    if(s.estado === 'ejecutando' || s.estado === 'listo') det = `CPU ${Math.floor(s.f/2)+1} · restan ${s.restante}`;
+    if(s.estado === 'ejecutando' || s.estado === 'listo')
+      det = `CPU ${Math.floor(s.f/2)+1} · restan ${s.restante}` + (prio ? ` · ${dato(s)}` : '');
     else if(s.estado === 'usandoES') det = `${esc(st.devs[s.dev].n)} · restan ${s.restante}`;
     else if(s.estado === 'esperaES') det = `${esc(st.devs[s.dev].n)} · pide ${s.restante}`;
     return `<div class="est-fila ${pc(s.i)}"><i class="dot"></i>` +
@@ -798,6 +857,8 @@ function recalcular(){
   $('#panelCmp').hidden = modo === 'uno';
   $('#campoQ').style.display = (cfg.alg === 'rr' && modo !== 'quantums') ? 'flex' : 'none';
   $('#leyenda').innerHTML = leyenda();
+  $('#campoEnvej').style.display = usaPrio(cfg.alg) ? 'flex' : 'none';
+  document.querySelectorAll('.campo-prio').forEach(el => el.hidden = !usaPrio(cfg.alg));
   $('#codigo').value = codificar();
   guardar();
   render();
@@ -860,7 +921,7 @@ function renderCmp(){
     ? (cfg.cambio > 0
         ? `Las cuatro corridas son Round Robin sobre el mismo lote, con un costo de cambio de contexto de ${cfg.cambio}. Un quantum chico responde antes pero paga más sobrecarga; uno grande degenera en FCFS.`
         : 'Las cuatro corridas son Round Robin sobre el mismo lote. Con costo de cambio de contexto en 0 el tiempo total es el mismo en todas y sólo cambian la espera y la respuesta: subí el costo para ver lo que cuesta un quantum chico.')
-    : 'Las cuatro políticas resuelven el mismo lote sobre un reloj compartido. Está resaltado el mejor valor de cada columna: ninguna gana en todas, y ahí está el punto.';
+    : 'Todas las políticas resuelven el mismo lote sobre un reloj compartido. Está resaltado el mejor valor de cada columna: ninguna gana en todas, y ahí está el punto.';
   $('#tablaCmp').innerHTML = `<thead><tr><th>${modo === 'quantums' ? 'Quantum' : 'Política'}</th>` +
     cols.map(c => `<th>${c.t}</th>`).join('') + '</tr></thead><tbody>' +
     filas.map(f => `<tr><td class="id">${f.nom}</td>` +
@@ -894,11 +955,12 @@ function decodificar(s){
   if(!ALGS.some(a => a.id === o.c.alg)) throw 0;
   const c = {alg:o.c.alg, quantum:Math.max(1, Math.min(20, +o.c.quantum || 2)),
     cambio:Math.max(0, Math.min(10, +o.c.cambio || 0)),
+    envej:Math.max(0, Math.min(20, +o.c.envej || 0)),
     emp:o.c.emp === 'desalojado' ? 'desalojado' : 'llegadas'};
   let d, l;
   if(o.v === 2){
     d = o.d.slice(0, MAXD).map(x => String(x).slice(0,14));
-    l = o.l.map(p => ({llegada:+p.llegada, fases:p.fases.map(f =>
+    l = o.l.map(p => ({llegada:+p.llegada, prio:Math.max(0, Math.min(MAXPRIO, +p.prio || 0)), fases:p.fases.map(f =>
       f.t === 'cpu' ? cpuF(+f.d) : ioF(Math.min(+f.dev || 0, d.length-1), +f.d))}));
   } else {
     d = ['Disco'];
@@ -934,6 +996,7 @@ function cargarEjemplo(k){
 }
 $('#ejES').addEventListener('click', () => cargarEjemplo('es'));
 $('#ejCPU').addEventListener('click', () => cargarEjemplo('cpu'));
+$('#ejPrio').addEventListener('click', () => cargarEjemplo('prio'));
 document.querySelectorAll('.seg-b').forEach(b => b.addEventListener('click', e => {
   const m = e.currentTarget.dataset.modo;
   if(m === modo) return;
@@ -941,6 +1004,7 @@ document.querySelectorAll('.seg-b').forEach(b => b.addEventListener('click', e =
   recalcular();
 }));
 $('#q').addEventListener('input', e => { cfg.quantum = Math.max(1, Math.min(20, +e.target.value || 1)); recalcular(); });
+$('#envej').addEventListener('input', e => { cfg.envej = Math.max(0, Math.min(20, +e.target.value || 0)); recalcular(); });
 $('#cambio').addEventListener('input', e => { cfg.cambio = Math.max(0, Math.min(10, +e.target.value || 0)); recalcular(); });
 $('#emp').addEventListener('change', e => { cfg.emp = e.target.value; recalcular(); });
 $('#ini').addEventListener('click', () => { pausar(); irA(0); });
@@ -976,7 +1040,8 @@ let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() 
 
 function refrescarControles(){
   renderDevs(); renderLote(); renderAlgs();
-  $('#q').value = cfg.quantum; $('#cambio').value = cfg.cambio; $('#emp').value = cfg.emp;
+  $('#q').value = cfg.quantum; $('#cambio').value = cfg.cambio;
+  $('#envej').value = cfg.envej; $('#emp').value = cfg.emp;
 }
 cargarGuardado();
 refrescarControles();

@@ -16,7 +16,18 @@ reloj de a una unidad de tiempo para ver qué decide el planificador y por qué.
 | FCFS | No | Orden de llegada |
 | SJF | No | Ráfaga de CPU más corta |
 | SRTF | Sí | Menor tiempo restante |
+| Prioridad | No | La más urgente primero |
+| Prioridad expropiativa | Sí | La más urgente primero |
 | Round Robin | Sí (por quantum) | Turno rotativo, quantum configurable |
+
+En las políticas por prioridad el número más bajo es el más urgente, y el
+**envejecimiento** mejora un nivel cada N unidades esperando la CPU (0 lo
+apaga). El lote **con inanición** está armado para mostrarlo: P2 llega en t=1
+con la peor prioridad y una corriente de procesos urgentes lo posterga hasta
+t=15 — espera 14 unidades. Con envejecimiento cada 2 unidades entra en t=9 y
+su espera baja a 8, mientras la espera media del lote sube de 3.00 a 3.67:
+el intercambio entre equidad y promedio, en dos números. Con factor 3 o 4 el
+envejecimiento no alcanza, que también es una lección.
 
 **Costo del cambio de contexto.** Configurable, 0 por defecto. Con un costo
 mayor que cero, cada despacho de un proceso distinto del último que usó la CPU
@@ -51,6 +62,8 @@ columnas, mientras que el quantum 8 produce exactamente los números de FCFS.
   Sirve para comparar políticas: se ve el efecto convoy en FCFS, la inanición
   del proceso largo en SRTF y el intercambio de Round Robin entre respuesta y
   cambios de contexto.
+- **Lote con inanición** — seis procesos con prioridades y llegadas escalonadas.
+  Sirve para ver la inanición por prioridad y cómo la corrige el envejecimiento.
 
 ## Cómo se lee la línea de tiempo
 
