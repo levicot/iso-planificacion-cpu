@@ -61,7 +61,8 @@ discusión:
 - La cola de cada dispositivo es FIFO; al liberarse toma al primero de su cola
   en ese mismo instante.
 - El tiempo en la cola de un dispositivo cuenta como espera de E/S, no de CPU.
-  Por eso `retorno = CPU + E/S + espera CPU + espera E/S`.
+  La columna `Esp. total` suma las dos esperas, de modo que
+  `retorno = CPU + E/S + espera total`.
 - En un mismo instante se encolan primero los que terminan su E/S y después las
   llegadas nuevas.
 - En SJF y SRTF, ante un empate gana el que lleva más tiempo en la cola.
