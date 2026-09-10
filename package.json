@@ -1,0 +1,12 @@
+{
+  "name": "iso-planificacion-cpu",
+  "private": true,
+  "description": "Simulador de planificación de procesos para Introducción a Sistemas Operativos",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test",
+    "fragmento": "node herramientas/html.js fragmento"
+  }
+}

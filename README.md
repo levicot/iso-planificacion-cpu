@@ -233,3 +233,24 @@ del sistema en lugar de IBM Plex).
 ## Atajos de teclado
 
 `←` `→` un paso · `espacio` reproducir o pausar · `inicio` `fin` a los extremos
+
+## Desarrollo
+
+La aplicación entera está en `index.html`. Las convenciones del simulador, las
+alternativas descartadas y el porqué de cada regla están en
+[DECISIONES.md](DECISIONES.md): conviene leerlo antes de cambiar el motor.
+
+Los tests no necesitan instalar nada, sólo Node 20 o posterior:
+
+```bash
+npm test
+```
+
+Leen las funciones directamente de `index.html`, así que prueban la versión que
+se publica. Cubren el motor (un caso resuelto a mano, la identidad de métricas y
+los invariantes de dispositivos, cambio de contexto, prioridades y VRR), los
+números que cita este README, y los generadores y la corrección de los
+desafíos.
+
+Para publicar como artifact de Claude hace falta la versión sin `<html>`,
+`<head>` ni `<body>`, que se genera con `npm run fragmento`.
