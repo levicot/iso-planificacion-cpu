@@ -78,6 +78,10 @@ header{border-bottom:1px solid var(--line);padding-bottom:0}
 .ej-op.errada{background:var(--c3-soft);border-color:var(--c3-mid);color:var(--c3-deep);opacity:1}
 .ej-sub{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
 .leer-tabla input{width:68px;text-align:right;padding:4px 6px;font-size:12.5px}
+#leerLote input.leer-ok, #leerLote select.leer-ok{border-color:var(--c2-mid);background:var(--c2-soft);color:var(--c2-deep)}
+#leerLote input.leer-mal, #leerLote select.leer-mal{border-color:var(--c3-mid);background:var(--c3-soft);color:var(--c3-deep)}
+.rec-fb{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--c3-mid);margin-top:8px}
+.leer-sec{border-top:1px solid var(--line);margin-top:18px;padding-top:16px}
 table.leer-tabla{width:auto;min-width:440px}
 .leer-tabla th{padding-right:34px}
 .leer-tabla td{padding:6px 34px 6px 0;vertical-align:top}
@@ -411,13 +415,19 @@ kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--panel-
 </section>
 
 <section class="panel" id="panelLeer" hidden>
-  <span class="eyebrow">Métricas a completar</span>
-  <p class="hint" style="margin:0 0 12px">Leé el diagrama y completá los valores de cada proceso. Las marcas ▲ y ▼ indican cuándo llega y cuándo termina. Los promedios admiten dos decimales, con punto o con coma.</p>
-  <div class="tabla-wrap"><table id="leerTabla" class="leer-tabla"></table></div>
-  <div style="display:flex;gap:12px;align-items:center;margin-top:14px;flex-wrap:wrap">
-    <button class="btn btn-pri" id="leerCorregir">Corregir</button>
-    <span class="ej-prog" id="leerResultado"></span>
+  <span class="eyebrow">Reconstruí el lote</span>
+  <p class="hint" style="margin:0 0 12px">Leyendo el diagrama, completá cuándo llega cada proceso y su secuencia de ráfagas. Tu lote se corrige simulándolo con la misma política que produjo el diagrama: es correcto si lo reproduce exactamente.</p>
+  <div id="leerLote"></div>
+  <div class="leer-sec">
+    <span class="eyebrow" style="display:block;margin-bottom:12px">Calculá las métricas</span>
+    <p class="hint" style="margin:0 0 12px">Las marcas ▲ y ▼ indican cuándo llega y cuándo termina cada proceso. Los promedios admiten dos decimales, con punto o con coma.</p>
+    <div class="tabla-wrap"><table id="leerTabla" class="leer-tabla"></table></div>
   </div>
+  <div style="display:flex;gap:14px;align-items:flex-start;margin-top:16px;flex-wrap:wrap">
+    <button class="btn btn-pri" id="leerCorregir">Corregir</button>
+    <div class="ej-prog" id="leerResultado" style="line-height:1.75"></div>
+  </div>
+  <p class="hint" style="margin:10px 0 0">Podés completar sólo una de las dos partes: la que dejes vacía no se corrige.</p>
 </section>
 
 <section class="panel" id="panelCmp" hidden>
@@ -574,7 +584,7 @@ const leyenda = () => {
 let {devs, lote, cfg} = EJEMPLOS.es();
 let modo = 'uno', modoSim = 'uno', sims = null;
 let sim = null, paso = 0, tocando = false, timer = null, ej = null;
-let tipoDesafio = 'predecir', leer = {nivel:'facil', semilla:'', gen:null, resp:{}, corregido:false};
+let tipoDesafio = 'predecir', leer = {nivel:'facil', semilla:'', gen:null, resp:{}, corregido:false, rec:[], recRes:null};
 let semillaEj = null;
 
 function validar(){
@@ -1079,7 +1089,7 @@ function sincronizarModo(){
 function render(){
   renderReloj();
   if(esCmp()){ renderCmp(); return; }
-  if(modo === 'ejercicio' && tipoDesafio === 'leer'){ renderTL(); renderLeer(); return; }
+  if(modo === 'ejercicio' && tipoDesafio === 'leer'){ renderTL(); renderRec(); renderLeer(); return; }
   renderTL(); renderPanel(); renderMetricas();
   if(modo === 'ejercicio') renderEjercicio();
 }
@@ -1161,6 +1171,82 @@ function nuevoLeer(semilla){
   $('#leerSemilla').value = semilla;
   leer.gen = generarDesafio(semilla, leer.nivel);
   leer.resp = {}; leer.corregido = false;
+  leer.rec = leer.gen.lote.map(() => ({llegada:'', fases:[{t:'cpu', d:''}]}));
+  leer.recRes = null;
+}
+
+const mismoDiagrama = (a, b) => a.T === b.T &&
+  a.cpuL.slice(0, a.T).join() === b.cpuL.slice(0, b.T).join() &&
+  a.devL.length === b.devL.length &&
+  a.devL.every((l, k) => l.slice(0, a.T).join() === b.devL[k].slice(0, b.T).join()) &&
+  a.ps.length === b.ps.length &&
+  a.ps.every(p => a.linea[p.id].join() === b.linea[p.id].join());
+
+function corregirRec(){
+  const orig = leer.gen.lote, dv = leer.gen.devs;
+  const entero = v => /^\d+$/.test(String(v).trim()) ? +String(v).trim() : null;
+  const tocado = leer.rec.some(p => String(p.llegada).trim() !== '' || p.fases.length > 1 ||
+    p.fases.some(f => String(f.d).trim() !== ''));
+  if(!tocado){ leer.recRes = {tocado:false}; return; }
+  let valido = true;
+  const lote2 = leer.rec.map((p, i) => {
+    const ll = entero(p.llegada);
+    const fases = p.fases.map(f => f.t === 'cpu' ? cpuF(entero(f.d)) : ioF(+f.dev || 0, entero(f.d)));
+    if(ll === null || fases.some(f => f.d === null || f.d < 1 || f.d > MAXDUR)) valido = false;
+    return {llegada:ll, prio:orig[i].prio, fases};
+  });
+  let reproduce = false;
+  if(valido){
+    const s2 = simular(aPs(lote2, dv), dv, leer.gen.cfg);
+    reproduce = s2.T < 400 && mismoDiagrama(s2, sim);
+  }
+  let ok = 0, tot = 0;
+  const fb = leer.rec.map((p, i) => {
+    const o = orig[i];
+    const llOk = reproduce || entero(p.llegada) === o.llegada;
+    const mismaEstructura = reproduce || p.fases.length === o.fases.length;
+    const durOk = p.fases.map((f, j) => reproduce || (mismaEstructura && entero(f.d) === o.fases[j].d));
+    const devOk = p.fases.map((f, j) => reproduce || f.t === 'cpu' || (mismaEstructura && +f.dev === o.fases[j].dev));
+    tot += 1 + o.fases.length + o.fases.filter(f => f.t === 'io').length;
+    ok += (llOk ? 1 : 0) + (mismaEstructura
+      ? durOk.filter(Boolean).length + devOk.filter((v, j) => v && p.fases[j].t === 'io').length : 0);
+    return {llOk, mismaEstructura, durOk, devOk, orig:o};
+  });
+  leer.recRes = {tocado:true, valido, reproduce, ok:reproduce ? tot : ok, tot, fb};
+}
+
+function renderRec(){
+  const es = NIVELES[leer.nivel].es, dv = leer.gen.devs;
+  const R = leer.corregido ? leer.recRes : null, graded = !!(R && R.tocado);
+  const cls = ok => graded ? (ok ? ' leer-ok' : ' leer-mal') : '';
+  const ro = leer.corregido ? ' readonly' : '';
+  const nomFase = f => f.t === 'cpu' ? `CPU ${f.d}` : `${esc(dv[f.dev])} ${f.d}`;
+  $('#leerLote').innerHTML = leer.rec.map((p, i) => {
+    const fb = graded ? R.fb[i] : null;
+    const fases = p.fases.map((f, j) => {
+      const flecha = j ? '<span class="flecha">→</span>' : '';
+      const okD = fb ? (fb.mismaEstructura && fb.durOk[j]) : true;
+      const okV = fb ? (fb.mismaEstructura && fb.devOk[j]) : true;
+      const n = Math.floor(j/2) + 1;
+      if(f.t === 'cpu') return `${flecha}<span class="fase fase-cpu">CPU <input type="text" inputmode="numeric" class="fnum${cls(okD)}"` +
+        ` data-i="${i}" data-j="${j}" data-k="d" value="${esc(f.d)}" aria-label="Duración de la ráfaga de CPU ${n} de P${i+1}"${ro}></span>`;
+      const opts = dv.map((d, k) => `<option value="${k}"${+f.dev === k ? ' selected' : ''}>${esc(d)}</option>`).join('');
+      return `${flecha}<span class="fase fase-io"><select class="${cls(okV).trim()}" data-i="${i}" data-j="${j}" data-k="dev"` +
+        ` aria-label="Dispositivo de la E/S ${n} de P${i+1}"${leer.corregido ? ' disabled' : ''}>${opts}</select>` +
+        `<input type="text" inputmode="numeric" class="fnum${cls(okD)}" data-i="${i}" data-j="${j}" data-k="d" value="${esc(f.d)}"` +
+        ` aria-label="Duración de la E/S ${n} de P${i+1}"${ro}></span>`;
+    }).join('');
+    const acc = es && !leer.corregido
+      ? `<span class="fase-acc"><button class="btn-mini" data-recadd="${i}">+ E/S</button>` +
+        `<button class="btn-mini" data-recdel="${i}"${p.fases.length < 3 ? ' disabled' : ''}>− E/S</button></span>` : '';
+    const bien = fb && fb.llOk && fb.mismaEstructura && fb.durOk.every(Boolean) && fb.devOk.every(Boolean);
+    const nota = fb && !bien
+      ? `<div class="rec-fb">debía ser: llega en ${fb.orig.llegada} · ${fb.orig.fases.map(nomFase).join(' → ')}</div>` : '';
+    return `<div class="proc ${pc(i)}"><div class="proc-top"><span class="pid"><i class="dot"></i>P${i+1}</span>` +
+      `<label>llega en <input type="text" inputmode="numeric" class="${cls(fb ? fb.llOk : true).trim()}" data-i="${i}"` +
+      ` data-k="llegada" value="${esc(p.llegada)}" aria-label="Instante de llegada de P${i+1}"${ro}></label></div>` +
+      `<div class="fases">${fases}${acc}</div>${nota}</div>`;
+  }).join('');
 }
 
 function renderLeer(){
@@ -1168,10 +1254,11 @@ function renderLeer(){
   $('#leerNivelTxt').textContent = N.d;
   $('#leerSemillaActual').textContent = `semilla ${leer.semilla} · nivel ${N.n.toLowerCase()}`;
   let ok = 0, tot = 0;
+  const metTocadas = Object.values(leer.resp).some(v => String(v).trim() !== '');
   const celda = (key, etiqueta, real, promedio) => {
     const val = leer.resp[key] ?? '';
     let cls = '', extra = '';
-    if(leer.corregido){
+    if(leer.corregido && metTocadas){
       const v = numLeer(val), bien = v !== null && Math.abs(v - real) <= (promedio ? 0.01 : 1e-9);
       tot++; if(bien) ok++;
       cls = bien ? 'leer-ok' : 'leer-mal';
@@ -1191,8 +1278,14 @@ function renderLeer(){
   if(leer.corregido){
     const a = ALGS.find(x => x.id === leer.gen.cfg.alg);
     const nombre = usaQuantum(a.id) ? `${a.n} con quantum ${leer.gen.cfg.quantum}` : a.n;
-    $('#leerResultado').innerHTML = `<b>${ok} de ${tot}</b> valores correctos${ok === tot ? ' — sin errores' : ''}. ` +
-      `El diagrama lo produjo <b>${nombre}</b>.`;
+    const R = leer.recRes, partes = [];
+    if(!R || !R.tocado) partes.push('Lote: <b>sin completar</b>');
+    else if(R.reproduce) partes.push('Lote: <b>reproduce el diagrama</b>');
+    else partes.push(`Lote: <b>no reproduce el diagrama</b>${R.valido ? '' : ', hay campos vacíos o inválidos'}` +
+      ` · ${R.ok} de ${R.tot} campos coinciden con el original`);
+    partes.push(metTocadas ? `Métricas: <b>${ok} de ${tot}</b> valores correctos` : 'Métricas: <b>sin completar</b>');
+    partes.push(`El diagrama lo produjo <b>${nombre}</b>.`);
+    $('#leerResultado').innerHTML = partes.join('<br>');
     $('#leerCorregir').textContent = 'Otro diagrama';
   } else {
     $('#leerResultado').textContent = '';
@@ -1515,8 +1608,24 @@ $('#leerTabla').addEventListener('input', e => {
   const k = e.target.dataset.leer;
   if(k && !leer.corregido) leer.resp[k] = e.target.value;
 });
+$('#leerLote').addEventListener('input', e => {
+  const {i, j, k} = e.target.dataset;
+  if(leer.corregido || i === undefined) return;
+  if(k === 'llegada') leer.rec[+i].llegada = e.target.value;
+  else leer.rec[+i].fases[+j][k] = k === 'dev' ? +e.target.value : e.target.value;
+});
+$('#leerLote').addEventListener('change', e => {
+  const {i, j, k} = e.target.dataset;
+  if(!leer.corregido && k === 'dev') leer.rec[+i].fases[+j].dev = +e.target.value;
+});
+$('#leerLote').addEventListener('click', e => {
+  if(leer.corregido) return;
+  const add = e.target.closest('[data-recadd]'), del = e.target.closest('[data-recdel]');
+  if(add){ leer.rec[+add.dataset.recadd].fases.push({t:'io', dev:0, d:''}, {t:'cpu', d:''}); renderRec(); }
+  else if(del){ const f = leer.rec[+del.dataset.recdel].fases; if(f.length >= 3) f.splice(-2, 2); renderRec(); }
+});
 $('#leerCorregir').addEventListener('click', () => {
-  if(!leer.corregido){ leer.corregido = true; renderLeer(); return; }
+  if(!leer.corregido){ corregirRec(); leer.corregido = true; renderRec(); renderLeer(); return; }
   nuevoLeer(semillaAzar()); recalcular();
 });
 document.querySelectorAll('#segModos .seg-b').forEach(b => b.addEventListener('click', e => {

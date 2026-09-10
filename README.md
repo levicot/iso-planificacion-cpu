@@ -172,6 +172,24 @@ espera suficiente para que el ejercicio no sea trivial. La misma semilla con el
 mismo nivel produce siempre el mismo diagrama. El lote generado no reemplaza al
 de la pestaña Simulación.
 
+#### Reconstruir el lote
+
+En la misma pantalla, antes de las métricas, el desafío pide reconstruir el
+lote: cuándo llega cada proceso y su secuencia de ráfagas de CPU y de E/S, con
+su dispositivo. Cada proceso arranca con una sola ráfaga de CPU, para no
+revelar cuántas E/S tiene.
+
+No se corrige comparando campo por campo sino **re-simulando**: el lote del
+alumno se simula con la misma política que produjo el diagrama, y es correcto
+si lo reproduce exactamente, aunque difiera del original. Si no lo reproduce,
+cada campo se marca contra el lote original y se muestra la secuencia que
+correspondía, como ayuda para encontrar el error.
+
+La prioridad no se puede leer en un diagrama, así que no se pide: para
+re-simular se usa la del lote original. El quantum tampoco se pide, porque es
+parte de la política. Cualquiera de las dos partes, lote o métricas, se puede
+dejar vacía y no se corrige.
+
 ## Compartir ejercicios
 
 El botón **Compartir este ejercicio** genera un código con el lote completo.
