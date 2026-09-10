@@ -53,7 +53,8 @@ estar *esperando el dispositivo* o *usándolo*, y el diagrama los distingue.
 
 ## Modos de comparación
 
-La línea de tiempo tiene tres modos. En **Comparar los cuatro**, las cuatro
+La pestaña **Simulación** tiene tres modos de línea de tiempo: un algoritmo
+paso a paso y dos de comparación. En **Comparar políticas**, todas las
 políticas resuelven el mismo lote sobre un reloj compartido: se ve una franja
 de ocupación de CPU por algoritmo, todas en la misma escala, y una tabla con
 espera media, peor espera individual, respuesta, retorno, cambios de contexto
@@ -114,9 +115,9 @@ discusión:
 - El cambio es atómico —ni SRTF lo interrumpe— y el proceso elegido sigue listo
   mientras dura, así que esas unidades cuentan como espera suya.
 
-## Modo ejercicio
+## Desafío
 
-El cuarto modo de la línea de tiempo invierte la herramienta: en vez de mostrar
+La pestaña **Desafío** invierte la herramienta: en vez de mostrar
 la respuesta, la pregunta. En cada instante en que el planificador tiene que
 elegir, oculta el panel de eventos y las métricas y pregunta **qué proceso toma
 la CPU**, ofreciendo los procesos elegibles más la opción *ninguno, la CPU queda

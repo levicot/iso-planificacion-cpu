@@ -51,7 +51,13 @@ p{margin:0}
 .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;
   letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3)}
 .lead{color:var(--ink-2);margin-top:8px}
-header{border-bottom:1px solid var(--line);padding-bottom:20px}
+header{border-bottom:1px solid var(--line);padding-bottom:0}
+.vistas{display:flex;gap:28px;margin-top:18px}
+.vista{font-family:inherit;font-size:14.5px;font-weight:500;color:var(--ink-3);background:none;border:none;
+  border-bottom:2px solid transparent;padding:8px 1px 11px;margin-bottom:-1px;cursor:pointer}
+.vista:hover{color:var(--ink)}
+.vista.activo{color:var(--ink);border-bottom-color:var(--ink)}
+.vista:focus-visible{outline:2px solid var(--ink);outline-offset:2px;border-radius:3px}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
 .panel > .eyebrow{display:block;margin-bottom:12px}
 .cols{display:grid;grid-template-columns:1.15fr 1fr;gap:18px;align-items:start}
@@ -264,6 +270,10 @@ kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--panel-
   <div class="eyebrow">Introducción a sistemas operativos</div>
   <h1>Planificador paso a paso</h1>
   <p class="lead">Definí un lote de procesos con sus ráfagas de CPU y sus pedidos de E/S a dispositivos concretos, elegí una política y avanzá el reloj de a una unidad para ver qué decide el planificador en cada instante y por qué.</p>
+  <nav class="vistas" role="tablist" aria-label="Vista">
+    <button class="vista activo" role="tab" aria-selected="true" data-vista="simulacion">Simulación</button>
+    <button class="vista" role="tab" aria-selected="false" data-vista="desafio">Desafío</button>
+  </nav>
 </header>
 
 <div class="cols" id="cols">
@@ -337,11 +347,10 @@ kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--panel-
     <select id="vel" style="width:auto" aria-label="Velocidad"><option value="900">Lento</option><option value="450" selected>Normal</option><option value="180">Rápido</option></select>
   </div>
   <div class="tl-head">
-    <div class="seg" role="group" aria-label="Modo de la línea de tiempo">
+    <div class="seg" id="segModos" role="group" aria-label="Modo de la línea de tiempo">
       <button class="seg-b activo" data-modo="uno">Un algoritmo, paso a paso</button>
       <button class="seg-b" data-modo="comparar">Comparar políticas</button>
       <button class="seg-b" id="segQ" data-modo="quantums">Comparar quantums</button>
-      <button class="seg-b" data-modo="ejercicio">Modo ejercicio</button>
     </div>
     <div class="legend" id="leyenda">
       <span><i class="sw sw-e"></i>usando la CPU</span>
@@ -380,7 +389,7 @@ kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--panel-
 </section>
 
 <section class="panel" id="resumenEj" hidden>
-  <span class="eyebrow">El lote de este ejercicio</span>
+  <span class="eyebrow">El lote de este desafío</span>
   <div id="resumenEjTxt"></div>
 </section>
 
@@ -525,7 +534,7 @@ const leyenda = () => {
     : `<span>Cada bloque es el proceso que ocupa la CPU en ese instante</span>${so}`;
 };
 let {devs, lote, cfg} = EJEMPLOS.es();
-let modo = 'uno', sims = null;
+let modo = 'uno', modoSim = 'uno', sims = null;
 let sim = null, paso = 0, tocando = false, timer = null, ej = null;
 
 function validar(){
@@ -1008,8 +1017,15 @@ function renderReloj(){
   $('#scrub').value = paso;
 }
 function sincronizarModo(){
+  const desafio = modo === 'ejercicio';
   $('#segQ').hidden = !usaQuantum(cfg.alg);
+  $('#segModos').hidden = desafio;
   document.querySelectorAll('.seg-b').forEach(x => x.classList.toggle('activo', x.dataset.modo === modo));
+  document.querySelectorAll('.vista').forEach(x => {
+    const act = (x.dataset.vista === 'desafio') === desafio;
+    x.classList.toggle('activo', act);
+    x.setAttribute('aria-selected', act ? 'true' : 'false');
+  });
 }
 function render(){
   renderReloj();
@@ -1330,6 +1346,13 @@ $('#ejBarra').addEventListener('click', e => {
   }
 });
 $('#ejES2').addEventListener('click', () => cargarEjemplo('es2'));
+document.querySelectorAll('.vista').forEach(b => b.addEventListener('click', e => {
+  const desafio = e.currentTarget.dataset.vista === 'desafio';
+  if(desafio === (modo === 'ejercicio')) return;
+  if(desafio){ modoSim = modo; modo = 'ejercicio'; }
+  else modo = modoSim;
+  pausar(); recalcular();
+}));
 document.querySelectorAll('.seg-b').forEach(b => b.addEventListener('click', e => {
   const m = e.currentTarget.dataset.modo;
   if(m === modo) return;
