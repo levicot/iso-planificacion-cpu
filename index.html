@@ -77,6 +77,14 @@ header{border-bottom:1px solid var(--line);padding-bottom:0}
 .ej-op.correcta{background:var(--c2-soft);border-color:var(--c2-mid);color:var(--c2-deep);opacity:1}
 .ej-op.errada{background:var(--c3-soft);border-color:var(--c3-mid);color:var(--c3-deep);opacity:1}
 .ej-sub{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.leer-tabla input{width:68px;text-align:right;padding:4px 6px;font-size:12.5px}
+table.leer-tabla{width:auto;min-width:440px}
+.leer-tabla th{padding-right:34px}
+.leer-tabla td{padding:6px 34px 6px 0;vertical-align:top}
+input.leer-ok{border-color:var(--c2-mid);background:var(--c2-soft);color:var(--c2-deep)}
+input.leer-mal{border-color:var(--c3-mid);background:var(--c3-soft);color:var(--c3-deep)}
+.leer-real{display:block;font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--c3-mid);
+  margin-top:3px;text-align:right}
 .ej-fb{margin-top:12px;padding:12px 14px;border-radius:8px;background:var(--panel-2);
   border:1px solid var(--line);font-size:13.5px;line-height:1.55;color:var(--ink-2)}
 .ej-fb b{color:var(--ink);font-weight:500}
@@ -352,6 +360,10 @@ kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--panel-
       <button class="seg-b" data-modo="comparar">Comparar políticas</button>
       <button class="seg-b" id="segQ" data-modo="quantums">Comparar quantums</button>
     </div>
+    <div class="seg" id="segDesafio" role="group" aria-label="Tipo de desafío" hidden>
+      <button class="seg-b activo" data-tipo="predecir">Predecir decisiones</button>
+      <button class="seg-b" data-tipo="leer">Leer el diagrama</button>
+    </div>
     <div class="legend" id="leyenda">
       <span><i class="sw sw-e"></i>usando la CPU</span>
       <span><i class="sw sw-u"></i>usando E/S</span>
@@ -379,7 +391,33 @@ kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--panel-
     <div id="ejPregunta"></div>
     <div id="ejFeedback"></div>
   </div>
+  <div id="leerBarra" hidden>
+    <div class="ej-top">
+      <label class="ej-prog" for="leerNivel">nivel</label>
+      <select id="leerNivel" style="width:auto">
+        <option value="facil">Fácil</option>
+        <option value="medio">Medio</option>
+        <option value="dificil">Difícil</option>
+      </select>
+      <input type="text" id="leerSemilla" placeholder="semilla" style="width:96px"
+        aria-label="Semilla del diagrama">
+      <button class="btn" id="leerGenerar">Nuevo diagrama</button>
+      <span style="flex:1"></span>
+      <span class="ej-prog" id="leerSemillaActual"></span>
+    </div>
+    <p class="hint" id="leerNivelTxt" style="margin:0 0 12px"></p>
+  </div>
   <div class="tl-scroll" id="tlScroll" tabindex="0"><div class="tl-body" id="tl"></div></div>
+</section>
+
+<section class="panel" id="panelLeer" hidden>
+  <span class="eyebrow">Métricas a completar</span>
+  <p class="hint" style="margin:0 0 12px">Leé el diagrama y completá los valores de cada proceso. Las marcas ▲ y ▼ indican cuándo llega y cuándo termina. Los promedios admiten dos decimales, con punto o con coma.</p>
+  <div class="tabla-wrap"><table id="leerTabla" class="leer-tabla"></table></div>
+  <div style="display:flex;gap:12px;align-items:center;margin-top:14px;flex-wrap:wrap">
+    <button class="btn btn-pri" id="leerCorregir">Corregir</button>
+    <span class="ej-prog" id="leerResultado"></span>
+  </div>
 </section>
 
 <section class="panel" id="panelCmp" hidden>
@@ -536,6 +574,7 @@ const leyenda = () => {
 let {devs, lote, cfg} = EJEMPLOS.es();
 let modo = 'uno', modoSim = 'uno', sims = null;
 let sim = null, paso = 0, tocando = false, timer = null, ej = null;
+let tipoDesafio = 'predecir', leer = {nivel:'facil', semilla:'', gen:null, resp:{}, corregido:false};
 
 function validar(){
   const errs = {}, ps = [];
@@ -981,22 +1020,29 @@ function recalcular(){
     if(v.errs[i]){ el.textContent = v.errs[i]; el.style.display = 'block'; }
     else el.style.display = 'none';
   });
-  if(!v.ok) return;
+  const leerMode = modo === 'ejercicio' && tipoDesafio === 'leer';
+  if(!v.ok && !leerMode) return;
   if(modo === 'quantums' && !usaQuantum(cfg.alg)) modo = 'uno';
   sincronizarModo();
-  sim = simular(v.ps, devs, cfg);
+  if(v.ok) sim = simular(v.ps, devs, cfg);
   sims = !esCmp() ? null : modo === 'comparar'
     ? ALGS.map(a => ({nom:a.id === 'rr' ? `RR (q=${cfg.quantum})` : a.n, s:simular(v.ps, devs, {...cfg, alg:a.id})}))
     : QUANTUMS.map(q => ({nom:`${cfg.alg === 'vrr' ? 'VRR' : 'RR'} q=${q}`, s:simular(v.ps, devs, {...cfg, quantum:q})}));
-  const ejMode = modo === 'ejercicio';
-  if(ejMode){ armarEjercicio(); paso = ej.preguntas.length ? ej.preguntas[0] : 0; }
+  const ejMode = modo === 'ejercicio', predMode = ejMode && !leerMode;
+  if(leerMode){
+    if(!leer.gen) nuevoLeer();
+    sim = simular(aPs(leer.gen.lote, leer.gen.devs), leer.gen.devs, leer.gen.cfg);
+    ej = null; paso = sim.T;
+  } else if(predMode){ armarEjercicio(); paso = ej.preguntas.length ? ej.preguntas[0] : 0; }
   else { ej = null; paso = Math.min(paso, maxPaso()); }
   $('#cols').hidden = ejMode;
-  $('#resumenEj').hidden = !ejMode;
+  $('#resumenEj').hidden = !predMode;
   $('#transport').hidden = ejMode;
-  $('#ejBarra').hidden = !ejMode;
+  $('#ejBarra').hidden = !predMode;
+  $('#leerBarra').hidden = !leerMode;
+  $('#panelLeer').hidden = !leerMode;
   $('#panelEventos').hidden = ejMode;
-  $('#panelesUno').hidden = esCmp();
+  $('#panelesUno').hidden = esCmp() || leerMode;
   $('#panelMetricas').hidden = esCmp() || ejMode;
   $('#panelResultado').hidden = true;
   $('#panelCmp').hidden = !esCmp();
@@ -1020,7 +1066,9 @@ function sincronizarModo(){
   const desafio = modo === 'ejercicio';
   $('#segQ').hidden = !usaQuantum(cfg.alg);
   $('#segModos').hidden = desafio;
-  document.querySelectorAll('.seg-b').forEach(x => x.classList.toggle('activo', x.dataset.modo === modo));
+  $('#segDesafio').hidden = !desafio;
+  document.querySelectorAll('#segModos .seg-b').forEach(x => x.classList.toggle('activo', x.dataset.modo === modo));
+  document.querySelectorAll('#segDesafio .seg-b').forEach(x => x.classList.toggle('activo', x.dataset.tipo === tipoDesafio));
   document.querySelectorAll('.vista').forEach(x => {
     const act = (x.dataset.vista === 'desafio') === desafio;
     x.classList.toggle('activo', act);
@@ -1030,6 +1078,7 @@ function sincronizarModo(){
 function render(){
   renderReloj();
   if(esCmp()){ renderCmp(); return; }
+  if(modo === 'ejercicio' && tipoDesafio === 'leer'){ renderTL(); renderLeer(); return; }
   renderTL(); renderPanel(); renderMetricas();
   if(modo === 'ejercicio') renderEjercicio();
 }
@@ -1053,6 +1102,96 @@ function generarLote(sem){
     t += ent(0, 3);
   }
   return nuevo;
+}
+
+const NIVELES = {
+  facil:   {n:'Fácil',   algs:['fcfs','sjf'], es:false, procs:[3,4],
+            d:'Sin E/S y sin expropiación: cada proceso ocupa la CPU en un solo bloque.'},
+  medio:   {n:'Medio',   algs:['srtf','rr'], es:false, procs:[3,5],
+            d:'Sin E/S y con expropiación: una ráfaga puede aparecer partida en varios bloques.'},
+  dificil: {n:'Difícil', algs:['fcfs','sjf','srtf','prio','prioE','rr','vrr'], es:true, procs:[3,5],
+            d:'Con E/S: varias ráfagas por proceso y espera en las colas de los dispositivos.'}
+};
+const DEVS_DESAFIO = ['Disco', 'Impresora'];
+const aPs = (l, dv) => l.map((p, i) => ({id:'P'+(i+1), i, llegada:p.llegada, prio:p.prio || 0,
+  fases:p.fases.map(f => f.t === 'cpu' ? cpuF(f.d) : ioF(Math.min(f.dev, dv.length - 1), f.d))}));
+const bloquesCPU = (s, id) => s.linea[id].filter((v, i, a) => v === 'ejecutando' && a[i-1] !== 'ejecutando').length;
+
+function generarDesafio(sem, nivel){
+  const N = NIVELES[nivel];
+  let ultimo = null;
+  for(let k = 0; k < 80; k++){
+    const r = rngDe(k ? `${sem}#${k}` : sem), ent = (a, b) => a + Math.floor(r() * (b - a + 1));
+    const alg = N.algs[ent(0, N.algs.length - 1)];
+    const n = ent(N.procs[0], N.procs[1]), lote = [];
+    const cfgD = {alg, quantum:ent(2, 4), cambio:0, envej:0, emp:'llegadas'};
+    let t = 0;
+    for(let i = 0; i < n; i++){
+      const fases = [cpuF(ent(2, 6))];
+      if(N.es && r() < 0.7) fases.push(ioF(ent(0, DEVS_DESAFIO.length - 1), ent(2, 5)), cpuF(ent(1, 4)));
+      lote.push({llegada:t, prio:ent(0, 4), fases});
+      t += ent(0, 3);
+    }
+    const dv = N.es ? DEVS_DESAFIO : [];
+    const s = simular(aPs(lote, dv), dv, cfgD);
+    ultimo = {lote, cfg:cfgD, devs:dv};
+    if(s.T >= 400 || s.met.reduce((a, m) => a + m.espCPU, 0) < 2) continue;
+    if(nivel === 'medio' && !s.ps.some(p => bloquesCPU(s, p.id) >= 2)) continue;
+    if(nivel === 'dificil' && lote.filter(p => p.fases.length > 1).length < 2) continue;
+    return ultimo;
+  }
+  return ultimo;
+}
+
+const colsLeer = nivel => nivel === 'dificil'
+  ? [{k:'retorno', t:'Retorno'}, {k:'espCPU', t:'Esp. CPU'}, {k:'espES', t:'Esp. E/S'}, {k:'respuesta', t:'Respuesta'}]
+  : [{k:'retorno', t:'Retorno'}, {k:'espCPU', t:'Espera'}, {k:'respuesta', t:'Respuesta'}];
+const numLeer = v => { const x = parseFloat(String(v).trim().replace(',', '.')); return Number.isFinite(x) ? x : null; };
+
+function nuevoLeer(){
+  const campo = $('#leerSemilla');
+  if(!campo.value.trim()) campo.value = Math.random().toString(36).slice(2, 8);
+  leer.semilla = campo.value.trim();
+  leer.nivel = $('#leerNivel').value;
+  leer.gen = generarDesafio(leer.semilla, leer.nivel);
+  leer.resp = {}; leer.corregido = false;
+}
+
+function renderLeer(){
+  const N = NIVELES[leer.nivel], cols = colsLeer(leer.nivel), met = sim.met;
+  $('#leerNivelTxt').textContent = N.d;
+  $('#leerSemillaActual').textContent = `semilla ${leer.semilla} · nivel ${N.n.toLowerCase()}`;
+  let ok = 0, tot = 0;
+  const celda = (key, etiqueta, real, promedio) => {
+    const val = leer.resp[key] ?? '';
+    let cls = '', extra = '';
+    if(leer.corregido){
+      const v = numLeer(val), bien = v !== null && Math.abs(v - real) <= (promedio ? 0.01 : 1e-9);
+      tot++; if(bien) ok++;
+      cls = bien ? 'leer-ok' : 'leer-mal';
+      if(!bien) extra = `<span class="leer-real">${promedio ? real.toFixed(2) : real}</span>`;
+    }
+    return `<td><input type="text" inputmode="decimal" class="${cls}" data-leer="${key}" value="${esc(val)}"` +
+      ` aria-label="${etiqueta}"${leer.corregido ? ' readonly' : ''}>${extra}</td>`;
+  };
+  $('#leerTabla').innerHTML =
+    '<thead><tr><th>Proceso</th>' + cols.map(c => `<th>${c.t}</th>`).join('') + '</tr></thead><tbody>' +
+    met.map(m => `<tr class="${pc(m.i)}"><td class="id"><span style="display:inline-flex;align-items:center;gap:7px">` +
+      `<i class="dot"></i>${m.id}</span></td>` +
+      cols.map(c => celda(`${m.id}|${c.k}`, `${c.t} de ${m.id}`, m[c.k], false)).join('') + '</tr>').join('') +
+    '<tr class="prom"><td>Promedio</td>' +
+      cols.map(c => celda(`prom|${c.k}`, `Promedio de ${c.t}`, met.reduce((a, x) => a + x[c.k], 0) / met.length, true)).join('') +
+    '</tr></tbody>';
+  if(leer.corregido){
+    const a = ALGS.find(x => x.id === leer.gen.cfg.alg);
+    const nombre = usaQuantum(a.id) ? `${a.n} con quantum ${leer.gen.cfg.quantum}` : a.n;
+    $('#leerResultado').innerHTML = `<b>${ok} de ${tot}</b> valores correctos${ok === tot ? ' — sin errores' : ''}. ` +
+      `El diagrama lo produjo <b>${nombre}</b>.`;
+    $('#leerCorregir').textContent = 'Otro diagrama';
+  } else {
+    $('#leerResultado').textContent = '';
+    $('#leerCorregir').textContent = 'Corregir';
+  }
 }
 
 function extraDe(st){
@@ -1353,7 +1492,23 @@ document.querySelectorAll('.vista').forEach(b => b.addEventListener('click', e =
   else modo = modoSim;
   pausar(); recalcular();
 }));
-document.querySelectorAll('.seg-b').forEach(b => b.addEventListener('click', e => {
+document.querySelectorAll('#segDesafio .seg-b').forEach(b => b.addEventListener('click', e => {
+  if(e.currentTarget.dataset.tipo === tipoDesafio) return;
+  tipoDesafio = e.currentTarget.dataset.tipo;
+  pausar(); recalcular();
+}));
+$('#leerGenerar').addEventListener('click', () => { nuevoLeer(); recalcular(); });
+$('#leerNivel').addEventListener('change', () => { nuevoLeer(); recalcular(); });
+$('#leerTabla').addEventListener('input', e => {
+  const k = e.target.dataset.leer;
+  if(k && !leer.corregido) leer.resp[k] = e.target.value;
+});
+$('#leerCorregir').addEventListener('click', () => {
+  if(!leer.corregido){ leer.corregido = true; renderLeer(); return; }
+  $('#leerSemilla').value = '';
+  nuevoLeer(); recalcular();
+});
+document.querySelectorAll('#segModos .seg-b').forEach(b => b.addEventListener('click', e => {
   const m = e.currentTarget.dataset.modo;
   if(m === modo) return;
   modo = m; pausar();
@@ -1392,7 +1547,7 @@ document.addEventListener('keydown', e => {
   if(acc[e.key]){ pausar(); acc[e.key](); e.preventDefault(); }
   else if(e.key === ' '){ tocando ? pausar() : reproducir(); e.preventDefault(); }
 });
-let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => sim && (modo === 'uno' ? renderTL() : renderCmp()), 120); });
+let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => sim && (esCmp() ? renderCmp() : renderTL()), 120); });
 
 function refrescarControles(){
   renderDevs(); renderLote(); renderAlgs();

@@ -148,6 +148,30 @@ semilla produce siempre el mismo lote. El docente reparte semillas distintas y
 cada alumno recibe un ejercicio diferente pero comparable, que el docente puede
 regenerar para corregir.
 
+### Leer el diagrama
+
+El segundo tipo de desafío muestra un diagrama completo generado al azar, sin
+el lote que lo produjo, y pide calcular las métricas de cada proceso y sus
+promedios leyendo el gráfico: las marcas de llegada y fin, los bloques de CPU y
+las esperas. Los promedios admiten dos decimales, con punto o con coma. Al
+corregir se marca cada celda, se muestra el valor correcto donde hubo error y se
+revela qué algoritmo produjo el diagrama.
+
+Tiene tres niveles, que siguen el orden en que se da la materia:
+
+| Nivel | E/S | Expropiación | Algoritmos posibles |
+|---|---|---|---|
+| Fácil | no | no | FCFS, SJF |
+| Medio | no | sí | SRTF, RR |
+| Difícil | sí | sí | los siete |
+
+El generador garantiza lo que promete cada nivel: en el fácil ningún proceso
+aparece partido, en el medio siempre hay al menos una ráfaga partida por una
+expropiación, en el difícil al menos dos procesos hacen E/S, y en todos hay
+espera suficiente para que el ejercicio no sea trivial. La misma semilla con el
+mismo nivel produce siempre el mismo diagrama. El lote generado no reemplaza al
+de la pestaña Simulación.
+
 ## Compartir ejercicios
 
 El botón **Compartir este ejercicio** genera un código con el lote completo.
