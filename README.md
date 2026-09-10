@@ -192,6 +192,23 @@ re-simular se usa la del lote original. El quantum tampoco se pide, porque es
 parte de la política. Cualquiera de las dos partes, lote o métricas, se puede
 dejar vacía y no se corrige.
 
+#### Identificar la política
+
+La tercera parte pide marcar qué políticas producen el diagrama. La respuesta es
+un conjunto: una política es correcta si, corrida sobre el lote, reproduce el
+diagrama exactamente. Para Round Robin y VRR también se pide el quantum, y se
+corrige simulando con el quantum que se escribió, así que cualquier valor que
+reproduzca el diagrama cuenta como correcto. Al corregir, cada política dice si
+lo produce y, si no, el primer instante en que se aparta, por ejemplo: *en t=4
+le da la CPU a P2, pero en el diagrama la tiene P3*.
+
+Para que la pregunta no sea trivial, el generador sólo acepta diagramas que
+discriminan: en los niveles fácil y medio una sola de las políticas posibles
+los produce, y en el difícil como máximo dos. Como las prioridades no se ven en
+un diagrama —con las prioridades adecuadas, Prioridad imita a FCFS o a SJF—, en
+el nivel difícil se muestran como dato del lote, igual que en un enunciado de
+parcial.
+
 ### Abrir en Simulación
 
 Al terminar cualquiera de los dos desafíos aparece **Abrir en Simulación**, que

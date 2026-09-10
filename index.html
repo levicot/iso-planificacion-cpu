@@ -84,6 +84,21 @@ header{border-bottom:1px solid var(--line);padding-bottom:0}
 #leerLote input.leer-mal, #leerLote select.leer-mal{border-color:var(--c3-mid);background:var(--c3-soft);color:var(--c3-deep)}
 .rec-fb{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--c3-mid);margin-top:8px}
 .leer-sec{border-top:1px solid var(--line);margin-top:18px;padding-top:16px}
+.leer-algs{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
+.ident{border:1px solid var(--line);border-radius:8px;padding:9px 12px;background:var(--panel-2);
+  display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px}
+.ident-alg{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--ink);cursor:pointer}
+.ident-alg input{width:auto;margin:0}
+.ident-alg b{font-weight:500}
+.ident-q{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-2)}
+.ident-q input{width:48px;padding:3px 6px;text-align:center}
+.ident-q input:disabled{opacity:.45}
+.ident-nota{flex-basis:100%;font-size:12.5px;line-height:1.45}
+.ident-ok{border-color:var(--c2-mid);background:var(--c2-soft)}
+.ident-ok .ident-nota{color:var(--c2-deep)}
+.ident-mal{border-color:var(--c3-mid);background:var(--c3-soft)}
+.ident-mal .ident-nota{color:var(--c3-deep)}
+#leerPrio b{color:var(--ink);font-weight:600;font-family:'IBM Plex Mono',monospace}
 table.leer-tabla{width:auto;min-width:440px}
 .leer-tabla th{padding-right:34px}
 .leer-tabla td{padding:6px 34px 6px 0;vertical-align:top}
@@ -426,6 +441,7 @@ kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--panel-
       <span class="ej-prog" id="leerSemillaActual"></span>
     </div>
     <p class="hint" id="leerNivelTxt" style="margin:0 0 12px"></p>
+    <p class="hint" id="leerPrio" style="margin:-6px 0 12px" hidden></p>
   </div>
   <div class="tl-scroll" id="tlScroll" tabindex="0"><div class="tl-body" id="tl"></div></div>
 </section>
@@ -439,12 +455,17 @@ kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--panel-
     <p class="hint" style="margin:0 0 12px">Las marcas ▲ y ▼ indican cuándo llega y cuándo termina cada proceso. Los promedios admiten dos decimales, con punto o con coma.</p>
     <div class="tabla-wrap"><table id="leerTabla" class="leer-tabla"></table></div>
   </div>
+  <div class="leer-sec">
+    <span class="eyebrow" style="display:block;margin-bottom:12px">Identificá la política</span>
+    <p class="hint" style="margin:0 0 12px">Marcá todas las políticas que, con este lote, producen exactamente este diagrama: puede haber más de una. Para Round Robin y VRR indicá también el quantum.</p>
+    <div id="leerAlgs" class="leer-algs"></div>
+  </div>
   <div style="display:flex;gap:14px;align-items:flex-start;margin-top:16px;flex-wrap:wrap">
     <button class="btn btn-pri" id="leerCorregir">Corregir</button>
     <button class="btn" id="leerAbrir" hidden>Abrir en Simulación</button>
     <div class="ej-prog" id="leerResultado" style="line-height:1.75"></div>
   </div>
-  <p class="hint" style="margin:10px 0 0">Podés completar sólo una de las dos partes: la que dejes vacía no se corrige.</p>
+  <p class="hint" style="margin:10px 0 0">Podés completar sólo algunas de las partes: las que dejes vacías no se corrigen.</p>
 </section>
 
 <section class="panel" id="panelCmp" hidden>
@@ -602,7 +623,7 @@ const leyenda = () => {
 let {devs, lote, cfg} = EJEMPLOS.es();
 let modo = 'uno', modoSim = 'uno', sims = null;
 let sim = null, paso = 0, tocando = false, timer = null, ej = null;
-let tipoDesafio = 'predecir', leer = {nivel:'facil', semilla:'', gen:null, resp:{}, corregido:false, rec:[], recRes:null};
+let tipoDesafio = 'predecir', leer = {nivel:'facil', semilla:'', gen:null, resp:{}, corregido:false, rec:[], recRes:null, ident:{}, identRes:null};
 let semillaEj = null;
 let pred = {gen:null}, previoSim = null;
 // lote, política y dispositivos de lo que se está mostrando: el desafío activo o Simulación
@@ -1119,7 +1140,7 @@ function sincronizarModo(){
 function render(){
   renderReloj();
   if(esCmp()){ renderCmp(); return; }
-  if(modo === 'ejercicio' && tipoDesafio === 'leer'){ renderTL(); renderRec(); renderLeer(); return; }
+  if(modo === 'ejercicio' && tipoDesafio === 'leer'){ renderTL(); renderRec(); renderIdent(); renderLeer(); return; }
   renderTL(); renderPanel(); renderMetricas();
   if(modo === 'ejercicio') renderEjercicio();
 }
@@ -1158,6 +1179,38 @@ const aPs = (l, dv) => l.map((p, i) => ({id:'P'+(i+1), i, llegada:p.llegada, pri
   fases:p.fases.map(f => f.t === 'cpu' ? cpuF(f.d) : ioF(Math.min(f.dev, dv.length - 1), f.d))}));
 const bloquesCPU = (s, id) => s.linea[id].filter((v, i, a) => v === 'ejecutando' && a[i-1] !== 'ejecutando').length;
 
+const QMAX = 7;
+const cfgCon = (alg, q) => ({alg, quantum:q ?? 2, cambio:0, envej:0, emp:'llegadas'});
+
+// primer instante en que una simulación se aparta del diagrama de referencia, contado en palabras
+function primeraDiferencia(s, ref){
+  const T = Math.max(s.T, ref.T);
+  for(let t = 0; t < T; t++){
+    const a = s.cpuL[t] ?? null, b = ref.cpuL[t] ?? null;
+    if(a !== b) return {t, txt:`en t=${t} ${a ? `le da la CPU a ${a}` : 'deja la CPU ociosa'}, pero en el diagrama ${b ? `la tiene ${b}` : 'está ociosa'}`};
+    for(let k = 0; k < ref.devL.length; k++){
+      const x = s.devL[k] ? (s.devL[k][t] ?? null) : null, y = ref.devL[k][t] ?? null;
+      if(x !== y) return {t, txt:`en t=${t} ${ref.devs[k].n} ${x ? `atiende a ${x}` : 'queda libre'}, pero en el diagrama ${y ? `atiende a ${y}` : 'está libre'}`};
+    }
+  }
+  if(s.T !== ref.T) return {t:T, txt:`termina en t=${s.T} y no en t=${ref.T}`};
+  return {t:Infinity, txt:''};
+}
+
+// qué políticas de la lista reproducen el diagrama sobre este lote, y con qué quantums
+function analizarPoliticas(lote, dv, ref, algs){
+  const ps = aPs(lote, dv);
+  return algs.map(alg => {
+    const pruebas = (usaQuantum(alg) ? Array.from({length:QMAX}, (_, i) => i + 1) : [null]).map(q => {
+      const sq = simular(ps, dv, cfgCon(alg, q));
+      return {q, ok:mismoDiagrama(sq, ref), div:primeraDiferencia(sq, ref)};
+    });
+    const validos = pruebas.filter(x => x.ok);
+    return {alg, reproduce:validos.length > 0, quantums:validos.map(x => x.q).filter(q => q !== null),
+      mejor:pruebas.reduce((a, b) => b.div.t > a.div.t ? b : a)};
+  });
+}
+
 function generarDesafio(sem, nivel){
   const N = NIVELES[nivel];
   let ultimo = null;
@@ -1179,6 +1232,8 @@ function generarDesafio(sem, nivel){
     if(s.T >= 400 || s.met.reduce((a, m) => a + m.espCPU, 0) < 2) continue;
     if(nivel === 'medio' && !s.ps.some(p => bloquesCPU(s, p.id) >= 2)) continue;
     if(nivel === 'dificil' && lote.filter(p => p.fases.length > 1).length < 2) continue;
+    const nS = analizarPoliticas(lote, dv, s, N.algs).filter(x => x.reproduce).length;
+    if(nivel === 'dificil' ? nS > 2 : nS !== 1) continue;
     return ultimo;
   }
   return ultimo;
@@ -1243,6 +1298,7 @@ function nuevoLeer(semilla){
   leer.resp = {}; leer.corregido = false;
   leer.rec = leer.gen.lote.map(() => ({llegada:'', fases:[{t:'cpu', d:''}]}));
   leer.recRes = null;
+  leer.ident = {}; leer.identRes = null;
 }
 
 const mismoDiagrama = (a, b) => a.T === b.T &&
@@ -1319,10 +1375,57 @@ function renderRec(){
   }).join('');
 }
 
+function listaQ(alg, qs){
+  if(alg === 'rr' && qs[qs.length - 1] === QMAX && qs.every((q, i) => !i || q === qs[i-1] + 1)) return `${qs[0]} o mayor`;
+  return qs.length > 1 ? qs.slice(0, -1).join(', ') + ' o ' + qs[qs.length - 1] : `${qs[0]}`;
+}
+
+function corregirIdent(){
+  const algs = NIVELES[leer.nivel].algs, dv = leer.gen.devs, ps = aPs(leer.gen.lote, dv);
+  if(!algs.some(id => leer.ident[id] && leer.ident[id].on)){ leer.identRes = {tocado:false}; return; }
+  let ok = 0; const por = {};
+  analizarPoliticas(leer.gen.lote, dv, sim, algs).forEach(x => {
+    const sel = leer.ident[x.alg] || {on:false, q:''};
+    const qTxt = String(sel.q ?? '').trim(), qn = /^\d+$/.test(qTxt) && +qTxt > 0 ? +qTxt : null;
+    const conQ = x.quantums.length ? ` con quantum ${listaQ(x.alg, x.quantums)}` : '';
+    let bien, txt;
+    if(!x.reproduce){ bien = !sel.on; txt = `No lo produce: ${x.mejor.div.txt}.`; }
+    else if(!sel.on){ bien = false; txt = `Sí lo produce${conQ}.`; }
+    else if(usaQuantum(x.alg)){
+      if(qn === null){ bien = false; txt = `Lo produce${conQ}, pero faltó indicar el quantum.`; }
+      else {
+        const sq = simular(ps, dv, cfgCon(x.alg, qn));
+        bien = mismoDiagrama(sq, sim);
+        txt = bien ? `Lo produce con quantum ${qn}.` : `Con quantum ${qn} no: ${primeraDiferencia(sq, sim).txt}. Lo produce${conQ}.`;
+      }
+    } else { bien = true; txt = 'Lo produce.'; }
+    if(bien) ok++;
+    por[x.alg] = {bien, txt};
+  });
+  leer.identRes = {tocado:true, ok, tot:algs.length, por};
+}
+
+function renderIdent(){
+  const R = leer.corregido && leer.identRes && leer.identRes.tocado ? leer.identRes : null;
+  $('#leerAlgs').innerHTML = NIVELES[leer.nivel].algs.map(id => {
+    const a = ALGS.find(x => x.id === id), sel = leer.ident[id] || {on:false, q:''}, res = R ? R.por[id] : null;
+    const q = usaQuantum(id)
+      ? `<label class="ident-q">quantum <input type="text" inputmode="numeric" data-q="${id}" value="${esc(sel.q ?? '')}"` +
+        `${sel.on && !leer.corregido ? '' : ' disabled'} aria-label="Quantum de ${a.n}"></label>` : '';
+    return `<div class="ident${res ? (res.bien ? ' ident-ok' : ' ident-mal') : ''}">` +
+      `<label class="ident-alg"><input type="checkbox" data-alg="${id}"${sel.on ? ' checked' : ''}${leer.corregido ? ' disabled' : ''}>` +
+      `<b>${a.n}</b></label>${q}${res ? `<div class="ident-nota">${res.txt}</div>` : ''}</div>`;
+  }).join('');
+}
+
 function renderLeer(){
   const N = NIVELES[leer.nivel], cols = colsLeer(leer.nivel), met = sim.met;
   $('#leerNivelTxt').textContent = N.d;
   $('#leerSemillaActual').textContent = `semilla ${leer.semilla} · nivel ${N.n.toLowerCase()}`;
+  const conPrio = N.algs.some(usaPrio);
+  $('#leerPrio').hidden = !conPrio;
+  if(conPrio) $('#leerPrio').innerHTML = 'Prioridades del lote, el número más bajo es el más urgente: ' +
+    leer.gen.lote.map((p, i) => `P${i+1} <b>${p.prio}</b>`).join(' · ');
   let ok = 0, tot = 0;
   const metTocadas = Object.values(leer.resp).some(v => String(v).trim() !== '');
   const celda = (key, etiqueta, real, promedio) => {
@@ -1355,6 +1458,8 @@ function renderLeer(){
     else partes.push(`Lote: <b>no reproduce el diagrama</b>${R.valido ? '' : ', hay campos vacíos o inválidos'}` +
       ` · ${R.ok} de ${R.tot} campos coinciden con el original`);
     partes.push(metTocadas ? `Métricas: <b>${ok} de ${tot}</b> valores correctos` : 'Métricas: <b>sin completar</b>');
+    const I = leer.identRes;
+    partes.push(!I || !I.tocado ? 'Política: <b>sin completar</b>' : `Política: <b>${I.ok} de ${I.tot}</b> bien clasificadas`);
     partes.push(`El diagrama lo produjo <b>${nombre}</b>.`);
     $('#leerResultado').innerHTML = partes.join('<br>');
     $('#leerCorregir').textContent = 'Otro diagrama';
@@ -1705,8 +1810,19 @@ $('#leerLote').addEventListener('click', e => {
   if(add){ leer.rec[+add.dataset.recadd].fases.push({t:'io', dev:0, d:''}, {t:'cpu', d:''}); renderRec(); }
   else if(del){ const f = leer.rec[+del.dataset.recdel].fases; if(f.length >= 3) f.splice(-2, 2); renderRec(); }
 });
+$('#leerAlgs').addEventListener('change', e => {
+  const id = e.target.dataset.alg;
+  if(!id || leer.corregido) return;
+  leer.ident[id] = {...(leer.ident[id] || {q:''}), on:e.target.checked};
+  renderIdent();
+  if(e.target.checked && usaQuantum(id)) $(`[data-q="${id}"]`).focus();
+});
+$('#leerAlgs').addEventListener('input', e => {
+  const id = e.target.dataset.q;
+  if(id && !leer.corregido) leer.ident[id] = {...(leer.ident[id] || {on:true}), q:e.target.value};
+});
 $('#leerCorregir').addEventListener('click', () => {
-  if(!leer.corregido){ corregirRec(); leer.corregido = true; renderRec(); renderLeer(); return; }
+  if(!leer.corregido){ corregirRec(); corregirIdent(); leer.corregido = true; renderRec(); renderIdent(); renderLeer(); return; }
   nuevoLeer(semillaAzar()); recalcular();
 });
 document.querySelectorAll('#segModos .seg-b').forEach(b => b.addEventListener('click', e => {
