@@ -143,10 +143,12 @@ error clásico es contestar la prioridad base. Mientras esa pregunta está
 pendiente se retiene la justificación de la primera, que contendría la
 respuesta.
 
-El campo de **semilla** genera un lote al azar de forma reproducible: la misma
-semilla produce siempre el mismo lote. El docente reparte semillas distintas y
-cada alumno recibe un ejercicio diferente pero comparable, que el docente puede
-regenerar para corregir.
+Se puede practicar con el lote de la pestaña Simulación o con uno **generado**,
+que vive sólo dentro del desafío y nunca reemplaza al de Simulación. Al generar
+se elige la **política**: al azar o una en particular. La semilla fija el lote
+independientemente de la política, así que con una misma semilla cada alumno
+puede practicar una política distinta sobre exactamente el mismo lote. El botón
+*Usar mi lote de Simulación* vuelve al lote propio.
 
 ### Leer el diagrama
 
@@ -189,6 +191,15 @@ La prioridad no se puede leer en un diagrama, así que no se pide: para
 re-simular se usa la del lote original. El quantum tampoco se pide, porque es
 parte de la política. Cualquiera de las dos partes, lote o métricas, se puede
 dejar vacía y no se corrige.
+
+### Abrir en Simulación
+
+Al terminar cualquiera de los dos desafíos aparece **Abrir en Simulación**, que
+lleva el lote y la política del desafío a la pestaña Simulación para recorrerlo
+paso a paso y ver dónde estuvo el error. Sólo aparece al final, porque antes
+revelaría las respuestas. Como abrirlo reemplaza el lote de Simulación, el lote
+anterior queda guardado —también si se recarga la página— y un aviso permite
+recuperarlo.
 
 ## Compartir ejercicios
 

@@ -77,6 +77,8 @@ header{border-bottom:1px solid var(--line);padding-bottom:0}
 .ej-op.correcta{background:var(--c2-soft);border-color:var(--c2-mid);color:var(--c2-deep);opacity:1}
 .ej-op.errada{background:var(--c3-soft);border-color:var(--c3-mid);color:var(--c3-deep);opacity:1}
 .ej-sub{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.aviso{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:13.5px;color:var(--ink-2)}
+.aviso b{color:var(--ink);font-weight:500}
 .leer-tabla input{width:68px;text-align:right;padding:4px 6px;font-size:12.5px}
 #leerLote input.leer-ok, #leerLote select.leer-ok{border-color:var(--c2-mid);background:var(--c2-soft);color:var(--c2-deep)}
 #leerLote input.leer-mal, #leerLote select.leer-mal{border-color:var(--c3-mid);background:var(--c3-soft);color:var(--c3-deep)}
@@ -288,6 +290,13 @@ kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--panel-
   </nav>
 </header>
 
+<section class="panel aviso" id="avisoAbierto" hidden>
+  <span>Se abrió en Simulación el lote de un desafío. <b>Tu lote anterior quedó guardado.</b></span>
+  <span style="flex:1"></span>
+  <button class="btn" id="avisoRecuperar">Recuperar mi lote</button>
+  <button class="btn-x" id="avisoCerrar" aria-label="Descartar el lote anterior y cerrar el aviso">&times;</button>
+</section>
+
 <div class="cols" id="cols">
   <section class="panel">
     <div class="panel-head">
@@ -378,19 +387,26 @@ kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--panel-
     </div>
   </div>
   <div id="ejBarra" hidden>
-    <div class="ej-top">
+    <div class="ej-top" style="border-bottom:none;padding-bottom:0;margin-bottom:10px">
       <span class="ej-prog">Decisión <b id="ejN">1</b> de <b id="ejTot">1</b></span>
       <span class="ej-prog">instante <b id="ejT">0</b></span>
       <span style="flex:1"></span>
       <span class="ej-prog">aciertos <b id="ejOK">0</b> · errores <b id="ejMal">0</b></span>
-      <input type="text" id="ejSemilla" placeholder="semilla" style="width:96px"
-        title="Con la misma semilla sale siempre el mismo lote" aria-label="Semilla del lote">
-      <button class="btn" id="ejGenerar">Generar lote</button>
       <select id="ejFiltro" style="width:auto" aria-label="Qué decisiones preguntar">
         <option value="todas">Todas las decisiones</option>
         <option value="disputadas">Sólo las disputadas</option>
       </select>
       <button class="btn" id="ejReiniciar">Reiniciar</button>
+    </div>
+    <div class="ej-top">
+      <span class="ej-prog" id="ejFuente"></span>
+      <button class="btn-mini" id="ejMiLote" hidden>Usar mi lote de Simulación</button>
+      <span style="flex:1"></span>
+      <label class="ej-prog" for="ejPolitica">política</label>
+      <select id="ejPolitica" style="width:auto"></select>
+      <input type="text" id="ejSemilla" placeholder="semilla" style="width:96px"
+        title="Con la misma semilla sale siempre el mismo lote" aria-label="Semilla del lote">
+      <button class="btn" id="ejGenerar">Generar lote</button>
     </div>
     <div id="ejPregunta"></div>
     <div id="ejFeedback"></div>
@@ -425,6 +441,7 @@ kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--panel-
   </div>
   <div style="display:flex;gap:14px;align-items:flex-start;margin-top:16px;flex-wrap:wrap">
     <button class="btn btn-pri" id="leerCorregir">Corregir</button>
+    <button class="btn" id="leerAbrir" hidden>Abrir en Simulación</button>
     <div class="ej-prog" id="leerResultado" style="line-height:1.75"></div>
   </div>
   <p class="hint" style="margin:10px 0 0">Podés completar sólo una de las dos partes: la que dejes vacía no se corrige.</p>
@@ -570,6 +587,7 @@ const EJEMPLOS = {
 const SO = '#cambio';
 const QUANTUMS = [1, 2, 4, 8];
 const leyenda = () => {
+  const cfg = ctx().cfg;
   const so = cfg.cambio > 0 ? `<span><i class="sw sw-so"></i>cambio de contexto</span>` : '';
   return !esCmp()
     ? `<span><i class="sw sw-e"></i>usando la CPU</span>
@@ -586,6 +604,11 @@ let modo = 'uno', modoSim = 'uno', sims = null;
 let sim = null, paso = 0, tocando = false, timer = null, ej = null;
 let tipoDesafio = 'predecir', leer = {nivel:'facil', semilla:'', gen:null, resp:{}, corregido:false, rec:[], recRes:null};
 let semillaEj = null;
+let pred = {gen:null}, previoSim = null;
+// lote, política y dispositivos de lo que se está mostrando: el desafío activo o Simulación
+const ctx = () => modo === 'ejercicio'
+  ? ((tipoDesafio === 'leer' ? leer.gen : pred.gen) || {cfg, devs, lote})
+  : {cfg, devs, lote};
 
 function validar(){
   const errs = {}, ps = [];
@@ -948,6 +971,7 @@ const ETIQ = {nuevo:'nuevo', listo:'listo', ejecutando:'ejecutando', usandoES:'u
   esperaES:'esperando E/S', terminado:'terminado'};
 
 function renderPanel(){
+  const cfg = ctx().cfg;
   const st = sim.pasos[paso];
   const oculto = modo === 'ejercicio' && ej && !ej.respondida && st.decision;
   const cola = oculto ? st.pre.cola : st.cola;
@@ -1032,7 +1056,8 @@ function recalcular(){
     else el.style.display = 'none';
   });
   const leerMode = modo === 'ejercicio' && tipoDesafio === 'leer';
-  if(!v.ok && !leerMode) return;
+  const predGen = modo === 'ejercicio' && tipoDesafio === 'predecir' && !!pred.gen;
+  if(!v.ok && !leerMode && !predGen) return;
   if(modo === 'quantums' && !usaQuantum(cfg.alg)) modo = 'uno';
   sincronizarModo();
   if(v.ok) sim = simular(v.ps, devs, cfg);
@@ -1044,9 +1069,14 @@ function recalcular(){
     if(!leer.gen) nuevoLeer(semillaAzar());
     sim = simular(aPs(leer.gen.lote, leer.gen.devs), leer.gen.devs, leer.gen.cfg);
     ej = null; paso = sim.T;
-  } else if(predMode){ armarEjercicio(); paso = ej.preguntas.length ? ej.preguntas[0] : 0; }
+  } else if(predMode){
+    if(pred.gen) sim = simular(aPs(pred.gen.lote, pred.gen.devs), pred.gen.devs, pred.gen.cfg);
+    armarEjercicio(); paso = ej.preguntas.length ? ej.preguntas[0] : 0;
+    renderFuentePred();
+  }
   else { ej = null; paso = Math.min(paso, maxPaso()); }
   $('#cols').hidden = ejMode;
+  $('#avisoAbierto').hidden = ejMode || !previoSim;
   $('#resumenEj').hidden = !predMode;
   $('#transport').hidden = ejMode;
   $('#ejBarra').hidden = !predMode;
@@ -1102,13 +1132,13 @@ function rngDe(sem){
   let x = (h >>> 0) || 123456789;
   return () => { x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; x >>>= 0; return x / 4294967296; };
 }
-function generarLote(sem){
+function generarLote(sem, dv = devs){
   const r = rngDe(sem), ent = (a, b) => a + Math.floor(r() * (b - a + 1));
   const n = ent(3, 5), nuevo = [];
   let t = 0;
   for(let i = 0; i < n; i++){
     const fases = [cpuF(ent(2, 5))];
-    if(r() < 0.6) fases.push(ioF(ent(0, devs.length - 1), ent(2, 5)), cpuF(ent(2, 4)));
+    if(r() < 0.6) fases.push(ioF(ent(0, dv.length - 1), ent(2, 5)), cpuF(ent(2, 4)));
     nuevo.push({llegada:t, prio:ent(0, 5), fases});
     t += ent(0, 3);
   }
@@ -1152,6 +1182,46 @@ function generarDesafio(sem, nivel){
     return ultimo;
   }
   return ultimo;
+}
+
+// la semilla fija el lote; la política sale de otra corriente, así el mismo lote sirve para cualquier política
+function generarPred(sem, pol){
+  const dv = DEVS_DESAFIO, r = rngDe(`${sem}|politica`), ent = (a, b) => a + Math.floor(r() * (b - a + 1));
+  const idx = ent(0, ALGS.length - 1), quantum = ent(2, 4);
+  return {semilla:sem, lote:generarLote(sem, dv), devs:dv,
+    cfg:{alg:pol === 'azar' ? ALGS[idx].id : pol, quantum, cambio:0, envej:0, emp:'llegadas'}};
+}
+function renderFuentePred(){
+  $('#ejFuente').innerHTML = pred.gen
+    ? `Lote generado · semilla <b>${esc(pred.gen.semilla)}</b>`
+    : 'Tu lote de Simulación';
+  $('#ejMiLote').hidden = !pred.gen;
+}
+
+function codificarDe(l, d, c){
+  try{ return btoa(encodeURIComponent(JSON.stringify({v:2, d, l, c}))); }catch(e){ return ''; }
+}
+function abrirEnSimulacion(g){
+  if(!previoSim){
+    previoSim = {lote:JSON.parse(JSON.stringify(lote)), devs:devs.slice(), cfg:{...cfg}};
+    try{ localStorage.setItem('planif2_previo', codificarDe(previoSim.lote, previoSim.devs, previoSim.cfg)); }catch(e){}
+  }
+  lote = JSON.parse(JSON.stringify(g.lote));
+  devs = g.devs.length ? g.devs.slice() : devs;
+  cfg = {...cfg, ...g.cfg};
+  pausar(); modo = 'uno'; modoSim = 'uno'; paso = 0;
+  refrescarControles(); recalcular(); irA(0);
+  scrollTo(0, 0);
+}
+function descartarPrevio(){
+  previoSim = null;
+  try{ localStorage.removeItem('planif2_previo'); }catch(e){}
+  $('#avisoAbierto').hidden = true;
+}
+function recuperarPrevio(){
+  if(previoSim){ lote = previoSim.lote; devs = previoSim.devs; cfg = previoSim.cfg; }
+  descartarPrevio();
+  refrescarControles(); recalcular(); irA(0);
 }
 
 const colsLeer = nivel => nivel === 'dificil'
@@ -1275,6 +1345,7 @@ function renderLeer(){
     '<tr class="prom"><td>Promedio</td>' +
       cols.map(c => celda(`prom|${c.k}`, `Promedio de ${c.t}`, met.reduce((a, x) => a + x[c.k], 0) / met.length, true)).join('') +
     '</tr></tbody>';
+  $('#leerAbrir').hidden = !leer.corregido;
   if(leer.corregido){
     const a = ALGS.find(x => x.id === leer.gen.cfg.alg);
     const nombre = usaQuantum(a.id) ? `${a.n} con quantum ${leer.gen.cfg.quantum}` : a.n;
@@ -1294,6 +1365,7 @@ function renderLeer(){
 }
 
 function extraDe(st){
+  const cfg = ctx().cfg;
   if(!st.respuesta) return null;
   const sn = st.pre.snap.find(x => x.id === st.respuesta);
   if(cfg.alg === 'vrr' && st.pre.aux.includes(st.respuesta)){
@@ -1327,6 +1399,7 @@ function armarEjercicio(){
 }
 
 function renderResumenEj(){
+  const {cfg, devs} = ctx();
   const nom = f => f.t === 'cpu' ? `CPU ${f.d}` : `${esc(devs[Math.min(f.dev, devs.length-1)])} ${f.d}`;
   const alg = ALGS.find(a => a.id === cfg.alg);
   const extras = [usaQuantum(cfg.alg) ? `quantum ${cfg.quantum}` : '',
@@ -1394,7 +1467,8 @@ function renderEjercicio(){
         ? '<div class="ej-tabla">' + ej.mal.map(m =>
             `<span class="mono">t=${m.t}</span><span>respondiste <b class="mono">${m.elegida === null ? 'ninguno' : m.elegida}</b></span>` +
             `<span>correcta <b class="mono">${m.correcta === null ? 'ninguno' : m.correcta}</b></span><span>${m.txt}</span>`).join('') + '</div>'
-        : '<p class="hint">Sin errores: resolviste el lote completo.</p>');
+        : '<p class="hint">Sin errores: resolviste el lote completo.</p>') +
+      (pred.gen ? '<div style="margin-top:14px"><button class="btn" id="ejAbrir">Abrir en Simulación</button></div>' : '');
     return;
   }
   $('#panelMetricas').hidden = true;
@@ -1483,9 +1557,7 @@ function reproducir(){
 }
 function pausar(){ tocando = false; clearInterval(timer); $('#play').textContent = '▶ Reproducir'; }
 
-function codificar(){
-  try{ return btoa(encodeURIComponent(JSON.stringify({v:2, d:devs, l:lote, c:cfg}))); }catch(e){ return ''; }
-}
+function codificar(){ return codificarDe(lote, devs, cfg); }
 function decodificar(s){
   const o = JSON.parse(decodeURIComponent(atob(s.trim())));
   if(!ALGS.some(a => a.id === o.c.alg)) throw 0;
@@ -1547,10 +1619,19 @@ $('#ejReiniciar').addEventListener('click', () => {
 $('#ejGenerar').addEventListener('click', () => {
   semillaEj = semillaPedida($('#ejSemilla'), semillaEj);
   $('#ejSemilla').value = semillaEj;
-  lote = generarLote(semillaEj);
-  paso = 0;
-  renderLote(); recalcular();
+  pred.gen = generarPred(semillaEj, $('#ejPolitica').value);
+  recalcular();
 });
+$('#ejPolitica').addEventListener('change', () => {
+  if(!pred.gen) return;
+  pred.gen = generarPred(pred.gen.semilla, $('#ejPolitica').value);
+  recalcular();
+});
+$('#ejMiLote').addEventListener('click', () => { pred.gen = null; recalcular(); });
+$('#panelResultado').addEventListener('click', e => { if(e.target.id === 'ejAbrir' && pred.gen) abrirEnSimulacion(pred.gen); });
+$('#leerAbrir').addEventListener('click', () => { if(leer.corregido) abrirEnSimulacion(leer.gen); });
+$('#avisoRecuperar').addEventListener('click', recuperarPrevio);
+$('#avisoCerrar').addEventListener('click', descartarPrevio);
 $('#ejSemilla').addEventListener('keydown', e => { if(e.key === 'Enter') $('#ejGenerar').click(); });
 $('#ejBarra').addEventListener('click', e => {
   if(!ej || ejTerminado()) return;
@@ -1674,7 +1755,11 @@ function refrescarControles(){
   $('#q').value = cfg.quantum; $('#cambio').value = cfg.cambio;
   $('#envej').value = cfg.envej; $('#emp').value = cfg.emp;
 }
+$('#ejPolitica').innerHTML = '<option value="azar">Al azar</option>' +
+  ALGS.map(a => `<option value="${a.id}">${a.n}</option>`).join('');
 cargarGuardado();
+try{ const pv = localStorage.getItem('planif2_previo');
+  if(pv){ const o = decodificar(pv); previoSim = {lote:o.l, devs:o.d, cfg:o.c}; } }catch(e){}
 refrescarControles();
 recalcular();
 irA(0);
