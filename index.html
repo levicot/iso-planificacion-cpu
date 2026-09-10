@@ -575,6 +575,7 @@ let {devs, lote, cfg} = EJEMPLOS.es();
 let modo = 'uno', modoSim = 'uno', sims = null;
 let sim = null, paso = 0, tocando = false, timer = null, ej = null;
 let tipoDesafio = 'predecir', leer = {nivel:'facil', semilla:'', gen:null, resp:{}, corregido:false};
+let semillaEj = null;
 
 function validar(){
   const errs = {}, ps = [];
@@ -1030,7 +1031,7 @@ function recalcular(){
     : QUANTUMS.map(q => ({nom:`${cfg.alg === 'vrr' ? 'VRR' : 'RR'} q=${q}`, s:simular(v.ps, devs, {...cfg, quantum:q})}));
   const ejMode = modo === 'ejercicio', predMode = ejMode && !leerMode;
   if(leerMode){
-    if(!leer.gen) nuevoLeer();
+    if(!leer.gen) nuevoLeer(semillaAzar());
     sim = simular(aPs(leer.gen.lote, leer.gen.devs), leer.gen.devs, leer.gen.cfg);
     ej = null; paso = sim.T;
   } else if(predMode){ armarEjercicio(); paso = ej.preguntas.length ? ej.preguntas[0] : 0; }
@@ -1148,12 +1149,17 @@ const colsLeer = nivel => nivel === 'dificil'
   : [{k:'retorno', t:'Retorno'}, {k:'espCPU', t:'Espera'}, {k:'respuesta', t:'Respuesta'}];
 const numLeer = v => { const x = parseFloat(String(v).trim().replace(',', '.')); return Number.isFinite(x) ? x : null; };
 
-function nuevoLeer(){
-  const campo = $('#leerSemilla');
-  if(!campo.value.trim()) campo.value = Math.random().toString(36).slice(2, 8);
-  leer.semilla = campo.value.trim();
+const semillaAzar = () => Math.random().toString(36).slice(2, 8);
+function semillaPedida(campo, vigente){
+  const v = campo.value.trim();
+  return (!v || v === vigente) ? semillaAzar() : v;
+}
+
+function nuevoLeer(semilla){
+  leer.semilla = semilla;
   leer.nivel = $('#leerNivel').value;
-  leer.gen = generarDesafio(leer.semilla, leer.nivel);
+  $('#leerSemilla').value = semilla;
+  leer.gen = generarDesafio(semilla, leer.nivel);
   leer.resp = {}; leer.corregido = false;
 }
 
@@ -1446,12 +1452,13 @@ $('#ejReiniciar').addEventListener('click', () => {
   armarEjercicio(); paso = ej.preguntas.length ? ej.preguntas[0] : 0; render();
 });
 $('#ejGenerar').addEventListener('click', () => {
-  const campo = $('#ejSemilla');
-  if(!campo.value.trim()) campo.value = Math.random().toString(36).slice(2, 8);
-  lote = generarLote(campo.value.trim());
+  semillaEj = semillaPedida($('#ejSemilla'), semillaEj);
+  $('#ejSemilla').value = semillaEj;
+  lote = generarLote(semillaEj);
   paso = 0;
   renderLote(); recalcular();
 });
+$('#ejSemilla').addEventListener('keydown', e => { if(e.key === 'Enter') $('#ejGenerar').click(); });
 $('#ejBarra').addEventListener('click', e => {
   if(!ej || ejTerminado()) return;
   const st = sim.pasos[ej.preguntas[ej.i]];
@@ -1497,16 +1504,20 @@ document.querySelectorAll('#segDesafio .seg-b').forEach(b => b.addEventListener(
   tipoDesafio = e.currentTarget.dataset.tipo;
   pausar(); recalcular();
 }));
-$('#leerGenerar').addEventListener('click', () => { nuevoLeer(); recalcular(); });
-$('#leerNivel').addEventListener('change', () => { nuevoLeer(); recalcular(); });
+$('#leerGenerar').addEventListener('click', () => {
+  nuevoLeer(semillaPedida($('#leerSemilla'), leer.semilla)); recalcular();
+});
+$('#leerSemilla').addEventListener('keydown', e => { if(e.key === 'Enter') $('#leerGenerar').click(); });
+$('#leerNivel').addEventListener('change', () => {
+  nuevoLeer($('#leerSemilla').value.trim() || leer.semilla || semillaAzar()); recalcular();
+});
 $('#leerTabla').addEventListener('input', e => {
   const k = e.target.dataset.leer;
   if(k && !leer.corregido) leer.resp[k] = e.target.value;
 });
 $('#leerCorregir').addEventListener('click', () => {
   if(!leer.corregido){ leer.corregido = true; renderLeer(); return; }
-  $('#leerSemilla').value = '';
-  nuevoLeer(); recalcular();
+  nuevoLeer(semillaAzar()); recalcular();
 });
 document.querySelectorAll('#segModos .seg-b').forEach(b => b.addEventListener('click', e => {
   const m = e.currentTarget.dataset.modo;
