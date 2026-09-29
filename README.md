@@ -120,8 +120,11 @@ discusión:
 La pestaña **Desafío** invierte la herramienta: en vez de mostrar
 la respuesta, la pregunta. En cada instante en que el planificador tiene que
 elegir, oculta el panel de eventos y las métricas y pregunta **qué proceso toma
-la CPU**, ofreciendo los procesos elegibles más la opción *ninguno, la CPU queda
-ociosa*. Los paneles de definición se colapsan a un resumen de sólo lectura; la
+la CPU**, ofreciendo todos los procesos del lote más la opción *ninguno, la CPU
+queda ociosa*: no sólo los que están en la cola de listos, porque parte del
+ejercicio es darse cuenta de cuáles pueden ejecutar. Si se elige uno que no
+podía, la corrección dice por qué: todavía no había llegado, estaba bloqueado
+en E/S o ya había terminado. Los paneles de definición se colapsan a un resumen de sólo lectura; la
 cola de listos, los dispositivos y el estado de cada proceso siguen visibles,
 porque son la información con la que hay que razonar.
 

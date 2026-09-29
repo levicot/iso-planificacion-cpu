@@ -1506,6 +1506,19 @@ function renderLeer(){
   }
 }
 
+// por qué un proceso no podía tomar la CPU en una decisión; null si estaba listo y era candidato
+function porQueNo(id, st){
+  const sn = st.pre.snap.find(x => x.id === id);
+  if(!sn || sn.estado === 'listo') return null;
+  const dev = sn.dev !== null ? st.devs[sn.dev].n : '';
+  const motivos = {
+    nuevo:`todavía no había llegado, llega en t=${sim.ps.find(p => p.id === id).llegada}`,
+    usandoES:`estaba bloqueado, usando ${dev}`,
+    esperaES:`estaba bloqueado en la cola de ${dev}`,
+    terminado:'ya había terminado'};
+  return `${id} no podía tomar la CPU: ${motivos[sn.estado] || 'no estaba listo'}.`;
+}
+
 function extraDe(st){
   const cfg = ctx().cfg;
   if(!st.respuesta) return null;
@@ -1559,9 +1572,10 @@ function renderResumenEj(){
 function ejFeedback(st){
   const acerto = ej.elegida === st.respuesta;
   const razones = st.ev.filter(e => /Se despacha|expropia|Cambio de contexto/.test(e.txt)).map(e => e.txt);
-  const cuerpo = razones.length
-    ? '<ul>' + razones.map(x => `<li>${x}</li>`).join('') + '</ul>'
-    : '<ul><li>Ningún proceso está listo: los que quedan están bloqueados en E/S o todavía no llegaron, así que la CPU queda ociosa.</li></ul>';
+  const noPodia = !acerto && ej.elegida ? porQueNo(ej.elegida, st) : null;
+  const cuerpo = '<ul>' + (noPodia ? `<li>${noPodia}</li>` : '') + (razones.length
+    ? razones.map(x => `<li>${x}</li>`).join('')
+    : '<li>Ningún proceso está listo: los que quedan están bloqueados en E/S o todavía no llegaron, así que la CPU queda ociosa.</li>') + '</ul>';
   const x = ej.extra, pendiente = x && ej.extraElegida === null;
   let h = `<div class="ej-fb"><b>${acerto ? 'Correcto.' : `No: la respuesta era ${st.respuesta || 'ninguno'}.`}</b>` +
     (pendiente ? '' : cuerpo);
@@ -1620,7 +1634,7 @@ function renderEjercicio(){
   $('#ejT').textContent = t;
   $('#ejPregunta').innerHTML =
     `<div class="ej-preg">¿Qué proceso toma la CPU en el instante ${t}?</div><div class="ej-ops">` +
-    st.opciones.concat([null]).map(id => {
+    sim.ps.map(p => p.id).concat([null]).map(id => {
       let cls = 'ej-op';
       if(ej.respondida){
         if(id === st.respuesta) cls += ' correcta';
@@ -1795,7 +1809,8 @@ $('#ejBarra').addEventListener('click', e => {
     ej.extraElegida = null; ej.extraOk = false;
     if(ej.elegida === st.respuesta) ej.ok++;
     else ej.mal.push({t:st.t, elegida:ej.elegida, correcta:st.respuesta,
-      txt:(st.ev.find(x => /Se despacha/.test(x.txt)) || {txt:'No había ningún proceso listo.'}).txt});
+      txt:[ej.elegida && porQueNo(ej.elegida, st),
+        (st.ev.find(x => /Se despacha/.test(x.txt)) || {txt:'No había ningún proceso listo.'}).txt].filter(Boolean).join(' ')});
     paso = Math.min(st.t + 1, sim.T);
     render();
     return;

@@ -185,6 +185,28 @@ test('modo Predecir: cada decisión guarda el estado previo y su respuesta es un
   }
 });
 
+test('modo Predecir: se ofrecen todos los procesos, y el que no era candidato explica por qué', () => {
+  const clave = {nuevo:'todavía no había llegado', usandoES:'usando', esperaES:'en la cola de', terminado:'ya había terminado'};
+  const vistos = new Set();
+  for(const L of LOTES()) for(const alg of TODAS){
+    const s = simular(L.ps, L.devs, cfg(alg));
+    M.fijar(null, s);
+    for(const pa of s.pasos){
+      if(!pa.decision) continue;
+      for(const p of s.ps){
+        const sn = pa.pre.snap.find(x => x.id === p.id), txt = M.porQueNo(p.id, pa), et = `${alg} t=${pa.t} ${p.id}`;
+        if(pa.opciones.includes(p.id)){ assert.equal(txt, null, `${et}: era candidato y se lo rechaza`); continue; }
+        assert.ok(txt && txt.startsWith(`${p.id} no podía tomar la CPU`), `${et}: sin explicación`);
+        assert.ok(txt.includes(clave[sn.estado]), `${et}: la explicación no corresponde a ${sn.estado}: ${txt}`);
+        if(sn.estado === 'nuevo') assert.ok(txt.includes(`t=${p.llegada}`), `${et}: no dice cuándo llega`);
+        if(sn.estado === 'usandoES' || sn.estado === 'esperaES') assert.ok(txt.includes(L.devs[sn.dev]), `${et}: no nombra el dispositivo`);
+        vistos.add(sn.estado);
+      }
+    }
+  }
+  assert.equal(J([...vistos].sort()), J(['esperaES', 'nuevo', 'terminado', 'usandoES']), 'los lotes de ejemplo no cubren todos los estados');
+});
+
 test('modo Predecir: el lote con E/S tiene 15 preguntas, 11 de ellas disputadas', () => {
   const L = ejemplo('es'), s = simular(L.ps, L.devs, L.cfg);
   assert.equal(J([M.preguntasPredecir(s, 'todas').length, M.preguntasPredecir(s, 'disputadas').length]), J([15, 11]));

@@ -195,6 +195,15 @@ que motiva VRR.
   instantánea del instante ya muestra al elegido ejecutando, y revelaba la
   respuesta.
   *Test:* `modo Predecir: cada decisión guarda el estado previo y su respuesta es una de las opciones`.
+- **Se ofrecen todos los procesos del lote**, más *Ninguno*, y no sólo los
+  candidatos de la cola de listos. Ofrecer sólo los candidatos hacía trivial
+  la pregunta: con la cola vacía el único botón era *Ninguno*, y con un solo
+  candidato bastaba copiarlo. Así hay que distinguir primero quién puede
+  ejecutar (no llegó, está bloqueado en E/S, terminó) y después aplicar la
+  política. Si se elige un proceso que no podía, la corrección explica por qué
+  (`porQueNo`). El filtro *sólo las disputadas* sigue contando candidatos, no
+  botones.
+  *Test:* `modo Predecir: se ofrecen todos los procesos, y el que no era candidato explica por qué`.
 - **Qué instantes se preguntan:** todo instante en que el planificador decide,
   salvo los de CPU ociosa sin nadie bloqueado, que son triviales. *Sólo las
   disputadas* descarta además los de un único candidato; una CPU ociosa con
