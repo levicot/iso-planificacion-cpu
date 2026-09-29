@@ -93,6 +93,30 @@ Sobre la fila de cada proceso, dos marcas acotan su vida: un triángulo hacia
 arriba en el borde inferior marca el instante en que **llega** al sistema, y
 uno hacia abajo en el borde superior el instante en que **termina**.
 
+## Diagrama de estados
+
+Al lado del panel *Qué pasa en este instante*, el diagrama de cinco estados
+—nuevo, listo, en ejecución, bloqueado y terminado— muestra dónde está cada
+proceso en el instante actual y resalta las transiciones que ocurren en él:
+*admitido*, *despacho*, *fin de quantum* o *expropiación*, *pide E/S*, *fin de
+E/S* y *salida*. Al avanzar el reloj se ve cómo se mueven los procesos entre
+estados.
+
+- **Bloqueado** reúne a los procesos que usan un dispositivo (chip relleno) y a
+  los que esperan en su cola (chip punteado).
+- En **Nuevo** figuran los procesos que todavía no llegaron, con su instante de
+  llegada.
+- **Listo** respeta el orden de la cola. En VRR, los de la cola auxiliar van
+  primero, marcados *aux*.
+- Durante un cambio de contexto, **En ejecución** muestra al sistema operativo
+  cargando al proceso elegido.
+- Si en un mismo instante un proceso llega y lo despachan, o vuelve de E/S y
+  toma la CPU, se resaltan las dos transiciones. Lo mismo cuando agota su
+  quantum sin nadie más en la cola: vuelve a Listo y lo despachan de nuevo.
+
+En el desafío *Predecir decisiones*, mientras la pregunta está pendiente, el
+diagrama no muestra el despacho de ese instante.
+
 ## Convenciones de desempate
 
 Están listadas en la aplicación, bajo las métricas. Las que más suelen generar

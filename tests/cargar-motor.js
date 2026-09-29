@@ -47,7 +47,7 @@ function cargarMotor(){
   const nombres = ['ALGS', 'EJEMPLOS', 'MAXDUR', 'QMAX', 'NIVELES', 'DEVS_DESAFIO', 'SO', 'cpuF', 'ioF',
     'usaPrio', 'usaQuantum', 'simular', 'elegir', 'rngDe', 'generarLote', 'generarDesafio', 'generarPred',
     'aPs', 'bloquesCPU', 'cfgCon', 'analizarPoliticas', 'primeraDiferencia', 'mismoDiagrama',
-    'corregirRec', 'corregirIdent', 'listaQ', 'porQueNo'];
+    'corregirRec', 'corregirIdent', 'listaQ', 'porQueNo', 'transiciones', 'ESTADO_A_NODO'];
   const contexto = vm.createContext({console});
   const motor = vm.runInContext(`${codigo}\n;({${nombres.join(', ')}})`, contexto, {filename:'index.html'});
   motor.fijar = (leer, sim) => { contexto.leer = leer; contexto.sim = sim; };

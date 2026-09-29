@@ -161,6 +161,33 @@ que motiva VRR.
 - *Comparar quantums* sólo aparece con las políticas que usan quantum (Round
   Robin y VRR). El barrido es sobre Round Robin con quantum 1, 2, 4 y 8.
 
+## Diagrama de estados
+
+- Es el modelo clásico de cinco estados. El simulador distingue seis, así que
+  *usando E/S* y *esperando el dispositivo* van los dos a **Bloqueado**
+  (`ESTADO_A_NODO`), y el chip los diferencia: relleno si usa el dispositivo,
+  punteado si espera en su cola, la misma distinción que hace la línea de
+  tiempo. El chip muestra sólo el nombre del dispositivo, y el detalle queda en
+  el tooltip y en la etiqueta accesible. Con textos como *espera Impresora*,
+  seis procesos bloqueados no entraban en el nodo.
+- Las transiciones se deducen comparando la instantánea de un instante con la
+  del anterior (`transiciones`). Cuando un proceso hace dos transiciones en un
+  mismo instante (llega y lo despachan, o vuelve de E/S y toma la CPU), se
+  descomponen pasando por Listo. El que agota su quantum sin nadie más en la
+  cola sigue ejecutando entre un instante y el otro, pero pasó por Listo: se
+  detecta porque el despacho de ese instante (`respuesta`) es él mismo.
+- El rótulo de ejecución → listo es *fin de quantum* en Round Robin y VRR, y
+  *expropiación* en SRTF y Prioridad expropiativa.
+- En *Predecir decisiones*, con la pregunta pendiente, se dibuja desde la
+  instantánea previa a la decisión y sin el despacho del instante, que sería la
+  respuesta.
+- Va al lado de *Qué pasa en este instante* (3/5 y 2/5 del ancho): a media
+  columna el texto de los chips quedaba de 9 a 10 px. Los nodos tienen lugar
+  para los 6 procesos, que es el máximo; desde 5 procesos en un mismo nodo los
+  chips se achican.
+
+*Test:* `diagrama de estados: transiciones válidas, encadenadas y un despacho por cada decisión`.
+
 ## Interfaz
 
 - **Pestañas Simulación y Desafío** arriba de todo. El desafío cambia la

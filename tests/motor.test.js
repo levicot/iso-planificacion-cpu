@@ -207,6 +207,38 @@ test('modo Predecir: se ofrecen todos los procesos, y el que no era candidato ex
   assert.equal(J([...vistos].sort()), J(['esperaES', 'nuevo', 'terminado', 'usandoES']), 'los lotes de ejemplo no cubren todos los estados');
 });
 
+test('diagrama de estados: transiciones válidas, encadenadas y un despacho por cada decisión', () => {
+  const validas = new Set(['nuevo>listo', 'listo>ejec', 'ejec>listo', 'ejec>bloq', 'bloq>listo', 'ejec>term']);
+  let redespachos = 0;
+  for(const L of LOTES()) for(const alg of TODAS) for(const cambio of [0, 1]){
+    const s = simular(L.ps, L.devs, cfg(alg, {cambio})), cuenta = {};
+    s.pasos.forEach((pa, t) => {
+      const antes = t ? s.pasos[t - 1].snap : null, et = `${alg} costo ${cambio} t=${t}`;
+      const tr = M.transiciones(antes, pa.snap, pa.decision ? pa.respuesta : null);
+      for(const p of pa.snap){
+        let nodo = antes ? M.ESTADO_A_NODO[antes.find(x => x.id === p.id).estado] : 'nuevo';
+        const suyas = tr.filter(x => x.id === p.id);
+        for(const x of suyas){
+          assert.ok(validas.has(`${x.de}>${x.a}`), `${et} ${p.id}: transición imposible ${x.de}>${x.a}`);
+          assert.equal(x.de, nodo, `${et} ${p.id}: transiciones que no se encadenan`);
+          nodo = x.a;
+          cuenta[`${p.id} ${x.de}>${x.a}`] = (cuenta[`${p.id} ${x.de}>${x.a}`] || 0) + 1;
+        }
+        assert.equal(nodo, M.ESTADO_A_NODO[p.estado], `${et} ${p.id}: no llega al estado de la instantánea`);
+        if(suyas.length === 2 && suyas[0].de === 'ejec') redespachos++;
+      }
+    });
+    for(const p of s.ps){
+      const et = `${alg} costo ${cambio} ${p.id}`;
+      const despachos = s.pasos.filter(pa => pa.decision && pa.respuesta === p.id).length;
+      assert.equal(cuenta[`${p.id} listo>ejec`] || 0, despachos, `${et}: despachos en el diagrama`);
+      assert.equal(cuenta[`${p.id} nuevo>listo`], 1, `${et}: admitido`);
+      assert.equal(cuenta[`${p.id} ejec>term`], 1, `${et}: salida`);
+    }
+  }
+  assert.ok(redespachos > 0, 'los lotes no cubren un fin de quantum sin nadie más en la cola');
+});
+
 test('modo Predecir: el lote con E/S tiene 12 preguntas, 7 de ellas disputadas', () => {
   const L = ejemplo('es'), s = simular(L.ps, L.devs, L.cfg);
   assert.equal(J([M.preguntasPredecir(s, 'todas').length, M.preguntasPredecir(s, 'disputadas').length]), J([12, 7]));

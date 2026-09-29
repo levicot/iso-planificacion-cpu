@@ -136,7 +136,7 @@ input.leer-mal{border-color:var(--c3-mid);background:var(--c3-soft);color:var(--
   font-size:13.5px;color:var(--ink-2);margin-top:12px}
 .ej-tabla .mono{font-size:12.5px}
 .ej-res{font-size:17px;font-weight:500;color:var(--ink)}
-@media (max-width:900px){ .cols,.abajo{grid-template-columns:1fr} }
+@media (max-width:900px){ .cols,.abajo,.fila-ed{grid-template-columns:1fr} }
 
 label{font-size:13px;color:var(--ink-2)}
 input,select{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--ink);
@@ -262,6 +262,26 @@ td.mejor{color:var(--ink);font-weight:500;background:var(--panel-3);border-radiu
 .chip{display:flex;align-items:center;gap:6px;background:var(--chip);color:var(--deep);
   border-radius:6px;padding:4px 9px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;font-weight:600}
 .chip em{font-style:normal;font-weight:400;opacity:.82;font-size:11px}
+.ed-wrap{overflow-x:auto}
+.ed{display:block;width:100%;min-width:480px;max-width:760px;height:auto;margin:0 auto}
+.fila-ed{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:18px;align-items:start}
+.fila-ed.solo{grid-template-columns:minmax(0,1fr)}
+.ed-nodo{fill:var(--panel-2);stroke:var(--line-2);stroke-width:1.2}
+.ed-tit{font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.12em;fill:var(--ink-3)}
+.ed-arista{fill:none;stroke:var(--line-2);stroke-width:1.5}
+.ed-arista.activa{stroke:var(--ink);stroke-width:2.4}
+.ed-punta{fill:var(--line-2)}
+.ed-punta.activa{fill:var(--ink)}
+.ed-rot{font-family:'IBM Plex Sans',sans-serif;font-size:13px;fill:var(--ink-3)}
+.ed-rot.activa{fill:var(--ink);font-weight:600}
+.ed-chips{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;align-content:center;height:100%;overflow:hidden}
+.ed-chips .chip{font-size:13px;padding:2px 7px}
+.ed-chips .chip em{font-size:11.5px}
+.ed-chips.denso .chip{font-size:11px;padding:1px 5px}
+.ed-chips.denso .chip em{font-size:10px}
+.ed-chips .chip.ed-cola{background:transparent;border:1.5px dashed var(--mid);padding:1px 6px}
+.ed-chips .vacio{font-size:13px}
+.chip.ed-so{background:var(--panel-3);color:var(--ink-2)}
 .cabeza{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.08em;
   text-transform:uppercase;color:var(--ink-3)}
 .vacio{color:var(--ink-3);font-size:13px;font-style:italic}
@@ -534,10 +554,17 @@ kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--panel-
     <span class="eyebrow">Estado de cada proceso</span>
     <div class="estados" id="estados"></div>
   </section>
-  <section class="panel ancho" id="panelEventos">
+  <div class="ancho fila-ed" id="filaEstados">
+  <section class="panel" id="panelDiagrama">
+    <span class="eyebrow">Diagrama de estados</span>
+    <div class="ed-wrap" id="diagramaEstados"></div>
+    <p class="hint">Resaltadas, las transiciones de este instante. <b>Bloqueado</b> reúne a los procesos que usan un dispositivo (chip relleno) y a los que esperan en su cola (chip punteado).</p>
+  </section>
+  <section class="panel" id="panelEventos">
     <span class="eyebrow">Qué pasa en este instante</span>
     <div class="ev" id="eventos" aria-live="polite"></div>
   </section>
+  </div>
 </div>
 
 <section class="panel" id="panelMetricas">
@@ -896,6 +923,22 @@ function simular(ps, nombres, c){
     sobrecarga:t ? soTot / t : 0};
 }
 
+// los cinco estados del modelo clásico: usando E/S y esperando el dispositivo son ambos "bloqueado"
+const ESTADO_A_NODO = {nuevo:'nuevo', listo:'listo', ejecutando:'ejec', usandoES:'bloq', esperaES:'bloq', terminado:'term'};
+// transiciones entre la instantánea anterior y la actual. Un proceso puede recorrer dos en el mismo
+// instante (llega o vuelve de E/S y lo despachan enseguida), y el que agota su quantum sin nadie más
+// en la cola pasa por listo aunque siga ejecutando: por eso el despacho del instante (redespacho)
+function transiciones(antes, ahora, redespacho){
+  const r = [];
+  ahora.forEach(p => {
+    const a = antes ? ESTADO_A_NODO[antes.find(x => x.id === p.id).estado] : 'nuevo', b = ESTADO_A_NODO[p.estado];
+    const camino = a === b ? (a === 'ejec' && p.id === redespacho ? ['ejec', 'listo', 'ejec'] : [])
+      : b === 'ejec' && (a === 'nuevo' || a === 'bloq') ? [a, 'listo', 'ejec'] : [a, b];
+    for(let k = 1; k < camino.length; k++) r.push({id:p.id, de:camino[k-1], a:camino[k]});
+  });
+  return r;
+}
+
 const pc = i => 'pc' + ((i % 6) + 1);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
@@ -1087,6 +1130,69 @@ function renderPanel(){
     : st.so
       ? `<span class="vacio">El sistema operativo sigue cambiando de contexto: guarda el estado de ${st.so.de} y carga el de ${st.so.a}. La CPU no avanza ningún proceso.</span>`
       : '<span class="vacio">Sin cambios: siguen ejecutando los mismos procesos que en el instante anterior.</span>';
+  renderDiagrama(st, snap, cola, auxQ, oculto, cfg);
+}
+
+const NODOS_ED = {
+  nuevo:{t:'NUEVO', x:16, y:10, w:240, h:80},
+  term:{t:'TERMINADO', x:444, y:10, w:240, h:80},
+  listo:{t:'LISTO', x:16, y:140, w:260, h:104},
+  ejec:{t:'EN EJECUCIÓN', x:424, y:140, w:260, h:104},
+  bloq:{t:'BLOQUEADO', x:190, y:288, w:320, h:104}
+};
+const ARISTAS_ED = [
+  {de:'nuevo', a:'listo', n:'admitido', d:'M120 90 C120 116 135 114 135 138', x:142, y:118, ta:'start'},
+  {de:'listo', a:'ejec', n:'despacho', d:'M268 223 Q350 262 432 223', x:350, y:274, ta:'middle'},
+  {de:'ejec', a:'listo', n:'interrupción', d:'M432 161 Q350 122 268 161', x:350, y:128, ta:'middle'},
+  {de:'ejec', a:'term', n:'salida', d:'M575 140 C575 114 590 116 590 92', x:597, y:120, ta:'start'},
+  {de:'ejec', a:'bloq', n:'pide E/S', d:'M560 244 C560 300 540 338 514 338', x:552, y:274, ta:'end'},
+  {de:'bloq', a:'listo', n:'fin de E/S', d:'M190 338 C150 338 120 300 120 246', x:128, y:274, ta:'start'}
+];
+
+function renderDiagrama(st, snap, cola, auxQ, oculto, cfg){
+  const previo = st.t > 0 ? sim.pasos[st.t - 1].snap : null;
+  // con la pregunta del desafío pendiente no se muestra el despacho de este instante: sería la respuesta
+  const tr = transiciones(previo, snap, !oculto && st.decision ? st.respuesta : null);
+  const idxDe = id => sim.ps.find(p => p.id === id).i;
+  const chip = (id, em, cls = '', tit = '') => `<span class="chip ${pc(idxDe(id))}${cls}"${tit ? ` title="${tit}"` : ''}>` +
+    `${id}${em ? ` <em>${em}</em>` : ''}</span>`;
+  const en = n => snap.filter(s => ESTADO_A_NODO[s.estado] === n);
+  const listos = auxQ.map(id => [id, 'aux']).concat(cola.map(id => [id, '']));
+  en('listo').forEach(s => { if(!listos.some(x => x[0] === s.id)) listos.push([s.id, '']); });
+  const nombres = {
+    nuevo:en('nuevo').map(s => s.id), listo:listos.map(x => x[0]), ejec:en('ejec').map(s => s.id),
+    bloq:en('bloq').map(s => s.id), term:en('term').map(s => s.id)};
+  const chips = {
+    nuevo:en('nuevo').map(s => chip(s.id, `t=${sim.ps.find(p => p.id === s.id).llegada}`)).join(''),
+    listo:listos.map(([id, em]) => chip(id, em)).join(''),
+    ejec:(!oculto && st.so ? `<span class="chip ed-so">SO <em>carga ${st.so.a}</em></span>` : '') +
+      en('ejec').map(s => chip(s.id)).join('') || '<span class="vacio">libre</span>',
+    bloq:en('bloq').map(s => { const d = esc(st.devs[s.dev].n), usa = s.estado === 'usandoES';
+      return chip(s.id, d, usa ? '' : ' ed-cola', `${s.id} ${usa ? 'usa' : 'espera en la cola de'} ${d}`); }).join(''),
+    term:en('term').map(s => chip(s.id)).join('')};
+  const rotulo = e => e.de === 'ejec' && e.a === 'listo' && tr.some(x => x.de === 'ejec' && x.a === 'listo')
+    ? (usaQuantum(cfg.alg) ? 'fin de quantum' : 'expropiación') : e.n;
+  const arista = (e, activa) => {
+    const ids = tr.filter(x => x.de === e.de && x.a === e.a).map(x => x.id);
+    const cls = activa ? ' activa' : '';
+    return `<path class="ed-arista${cls}" d="${e.d}" marker-end="url(#edPunta${activa ? 'A' : ''})"/>` +
+      `<text class="ed-rot${cls}" x="${e.x}" y="${e.y}" text-anchor="${e.ta}">${rotulo(e)}${activa ? ': ' + ids.join(', ') : ''}</text>`;
+  };
+  const activa = e => tr.some(x => x.de === e.de && x.a === e.a);
+  const punta = a => `<marker id="edPunta${a ? 'A' : ''}" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse"` +
+    ` markerWidth="${a ? 10 : 8}" markerHeight="${a ? 10 : 8}" orient="auto"><path class="ed-punta${a ? ' activa' : ''}" d="M0,0 L10,5 L0,10 z"/></marker>`;
+  nombres.bloq = en('bloq').map(s => `${s.id} ${s.estado === 'usandoES' ? 'usa' : 'espera'} ${esc(st.devs[s.dev].n)}`);
+  const resumen = Object.entries(NODOS_ED).map(([k, n]) => `${n.t.toLowerCase()}: ${nombres[k].join(', ') || 'ninguno'}`).join('; ');
+  $('#diagramaEstados').innerHTML =
+    `<svg class="ed" viewBox="0 0 700 400" role="img" aria-label="Estados en t=${st.t}. ${resumen}">` +
+    `<defs>${punta(false)}${punta(true)}</defs>` +
+    ARISTAS_ED.filter(e => !activa(e)).map(e => arista(e, false)).join('') +
+    Object.entries(NODOS_ED).map(([k, n]) =>
+      `<rect class="ed-nodo" x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="${n.h / 2}"/>` +
+      `<text class="ed-tit" x="${n.x + n.w / 2}" y="${n.y + 17}" text-anchor="middle">${n.t}</text>` +
+      `<foreignObject x="${n.x + 14}" y="${n.y + 24}" width="${n.w - 28}" height="${n.h - 30}">` +
+      `<div xmlns="http://www.w3.org/1999/xhtml" class="ed-chips${nombres[k].length >= 5 ? ' denso' : ''}">${chips[k]}</div></foreignObject>`).join('') +
+    ARISTAS_ED.filter(activa).map(e => arista(e, true)).join('') + '</svg>';
 }
 
 function renderMetricas(){
@@ -1141,6 +1247,7 @@ function recalcular(){
   $('#leerBarra').hidden = !leerMode;
   $('#panelLeer').hidden = !leerMode;
   $('#panelEventos').hidden = ejMode;
+  $('#filaEstados').classList.toggle('solo', ejMode);
   $('#panelesUno').hidden = esCmp() || leerMode;
   $('#panelMetricas').hidden = esCmp() || ejMode;
   $('#panelResultado').hidden = true;
