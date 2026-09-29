@@ -135,8 +135,10 @@ muestra el puntaje, la lista de errores con su explicación, y recién ahí las
 métricas del lote.
 
 El selector elige entre preguntar **todas las decisiones** o **sólo las
-disputadas** —aquellas con más de un candidato—, que sobre el lote con E/S son
-15 y 11 respectivamente.
+disputadas** —aquellas con más de un proceso listo compitiendo por la CPU—,
+que sobre el lote con E/S son 15 y 7 respectivamente. Los instantes de CPU
+ociosa no son disputados: con ese filtro, la siguiente pregunta llega cuando
+vuelve a haber competencia en la cola de listos.
 
 Cuando la política lo amerita aparece una **segunda pregunta**, y sólo entonces:
 en VRR, por cuántas unidades recibe la CPU el proceso despachado desde la cola

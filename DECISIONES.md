@@ -205,10 +205,13 @@ que motiva VRR.
   botones.
   *Test:* `modo Predecir: se ofrecen todos los procesos, y el que no era candidato explica por qué`.
 - **Qué instantes se preguntan:** todo instante en que el planificador decide,
-  salvo los de CPU ociosa sin nadie bloqueado, que son triviales. *Sólo las
-  disputadas* descarta además los de un único candidato; una CPU ociosa con
-  procesos bloqueados sí se pregunta, porque la tentación es elegir a alguien.
-  *Test:* `modo Predecir: el lote con E/S tiene 15 preguntas, 11 de ellas disputadas`.
+  salvo los de CPU ociosa sin nadie bloqueado, que son triviales; una CPU
+  ociosa con procesos bloqueados sí se pregunta, porque la tentación es elegir
+  a alguien. *Sólo las disputadas* pregunta únicamente las decisiones con dos o
+  más candidatos. Al principio dejaba pasar también las de CPU ociosa (cero
+  candidatos), y en un tramo ocioso preguntaba *Ninguno* instante tras instante.
+  *Tests:* `modo Predecir: el lote con E/S tiene 15 preguntas, 7 de ellas disputadas`,
+  `modo Predecir: sólo las disputadas son exactamente las decisiones con dos o más candidatos`.
 - **La simulación avanza con la respuesta correcta**, no con la del alumno, para
   que un error temprano no arrastre todas las decisiones siguientes.
 - **Segunda pregunta** sólo cuando la política la amerita: en VRR, cuántas

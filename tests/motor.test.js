@@ -207,9 +207,17 @@ test('modo Predecir: se ofrecen todos los procesos, y el que no era candidato ex
   assert.equal(J([...vistos].sort()), J(['esperaES', 'nuevo', 'terminado', 'usandoES']), 'los lotes de ejemplo no cubren todos los estados');
 });
 
-test('modo Predecir: el lote con E/S tiene 15 preguntas, 11 de ellas disputadas', () => {
+test('modo Predecir: el lote con E/S tiene 15 preguntas, 7 de ellas disputadas', () => {
   const L = ejemplo('es'), s = simular(L.ps, L.devs, L.cfg);
-  assert.equal(J([M.preguntasPredecir(s, 'todas').length, M.preguntasPredecir(s, 'disputadas').length]), J([15, 11]));
+  assert.equal(J([M.preguntasPredecir(s, 'todas').length, M.preguntasPredecir(s, 'disputadas').length]), J([15, 7]));
+});
+
+test('modo Predecir: sólo las disputadas son exactamente las decisiones con dos o más candidatos', () => {
+  for(const L of LOTES()) for(const alg of TODAS){
+    const s = simular(L.ps, L.devs, cfg(alg));
+    const esperadas = s.pasos.filter(pa => pa.decision && pa.opciones.length >= 2).map(pa => pa.t);
+    assert.equal(J(M.preguntasPredecir(s, 'disputadas')), J(esperadas), `${alg}: preguntas del filtro disputadas`);
+  }
 });
 
 test('lotes de ejemplo: valores de referencia, incluidos los que cita el README', () => {
