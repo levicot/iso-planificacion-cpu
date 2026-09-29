@@ -204,6 +204,24 @@ que motiva VRR.
 
 *Test:* `diagrama de estados: transiciones válidas, encadenadas y un despacho por cada decisión`.
 
+### Animaciones del resto de la página
+
+- Todas comparten una sola regla (`anim`, `duracionAnim`): se anima sólo si el
+  dibujo nuevo es el instante siguiente del mismo lote (la misma simulación, o
+  el mismo conjunto de simulaciones en los modos de comparación). La duración
+  es la del diagrama: 650 ms a mano, el 80 % del intervalo al reproducir, nada
+  por debajo de 200 ms ni con `prefers-reduced-motion`.
+- **Excepción:** la línea de tiempo (`duracionLinea`) dura el intervalo
+  completo al reproducir y se anima también en *Rápido*. Es un crecimiento
+  lineal que acompaña al reloj, así que se sigue a cualquier velocidad, y
+  encadenado con el paso siguiente queda continuo. A mano dura 400 ms.
+- La cola de listos y los dispositivos usan FLIP: se mide dónde estaba cada
+  chip antes de redibujar y se lo desliza desde ahí. Es la técnica que menos
+  toca el código de dibujo, que sigue reemplazando el HTML completo.
+- No hay tests automáticos para esto: es sólo presentación y no cambia ningún
+  dato. Se verificó en el navegador contando las animaciones que arranca cada
+  paso.
+
 ## Interfaz
 
 - **Pestañas Simulación y Desafío** arriba de todo. El desafío cambia la

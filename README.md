@@ -123,6 +123,24 @@ verlo. Si el sistema pide reducir el movimiento, el diagrama no se anima.
 En el desafío *Predecir decisiones*, mientras la pregunta está pendiente, el
 diagrama no muestra el despacho de ese instante.
 
+### Animaciones
+
+Al avanzar de a un instante, además del diagrama de estados:
+
+- **Línea de tiempo:** los bloques crecen al ritmo del reloj y el cursor se
+  desliza. Las marcas de llegada y fin aparecen cuando el cursor llega a ellas.
+  También en los modos de comparación.
+- **Cola de listos y dispositivos:** los procesos se deslizan cuando la cola
+  avanza o pasan de esperar un dispositivo a usarlo, y los que llegan entran
+  deslizándose.
+- **Estado de cada proceso:** la etiqueta de los que cambiaron de estado late
+  una vez.
+- **Qué pasa en este instante:** los eventos aparecen uno tras otro.
+
+Los saltos no se animan. En velocidad *Rápido* sólo se anima la línea de
+tiempo, que acompaña al reloj de forma continua. Si el sistema pide reducir el
+movimiento, no se anima nada.
+
 ## Convenciones de desempate
 
 Están listadas en la aplicación, bajo las métricas. Las que más suelen generar

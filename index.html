@@ -1027,11 +1027,12 @@ function tramos(arr){
   return r;
 }
 function filaRecurso(lab, serie, k, u, W){
+  const cr = r => r.a + r.len === k ? ' crece' : '';
   const cont = tramos(serie.slice(0,k)).map(r => {
-    if(!r.v) return `<div class="blk rec-idle" style="left:${r.a*u}px;width:${r.len*u}px"></div>`;
-    if(r.v === SO) return `<div class="blk rec-so" style="left:${r.a*u}px;width:${r.len*u}px" title="Cambio de contexto">${r.len*u >= 26 ? 'SO' : ''}</div>`;
+    if(!r.v) return `<div class="blk rec-idle${cr(r)}" style="left:${r.a*u}px;width:${r.len*u}px"></div>`;
+    if(r.v === SO) return `<div class="blk rec-so${cr(r)}" style="left:${r.a*u}px;width:${r.len*u}px" title="Cambio de contexto">${r.len*u >= 26 ? 'SO' : ''}</div>`;
     const p = sim.ps.find(x => x.id === r.v);
-    return `<div class="blk rec-blk ${pc(p.i)}" style="left:${r.a*u}px;width:${r.len*u}px">${r.len*u >= 22 ? r.v : ''}</div>`;
+    return `<div class="blk rec-blk ${pc(p.i)}${cr(r)}" style="left:${r.a*u}px;width:${r.len*u}px">${r.len*u >= 22 ? r.v : ''}</div>`;
   }).join('');
   return `<div class="row"><div class="lab" title="${esc(lab)}"><b>${esc(lab)}</b></div>` +
     `<div class="track track-rec" style="width:${W}px">${cont}</div></div>`;
@@ -1056,15 +1057,16 @@ function renderTL(){
     h += `<div class="row ${pc(p.i)}"><div class="lab"><b>${p.id}</b></div><div class="track" style="width:${W}px">`;
     h += tramos(sim.linea[p.id].slice(0,k)).map(r =>
       ['ejecutando','usandoES','esperaES'].includes(r.v)
-        ? `<div class="blk st-${r.v}" style="left:${r.a*u}px;width:${r.len*u}px"></div>` : '').join('');
+        ? `<div class="blk st-${r.v}${r.a + r.len === k ? ' crece' : ''}" style="left:${r.a*u}px;width:${r.len*u}px"></div>` : '').join('');
     if(k >= p.llegada)
-      h += `<div class="mk mk-llega" style="left:${p.llegada*u - 5}px" title="${p.id} llega en t=${p.llegada}"></div>`;
+      h += `<div class="mk mk-llega${p.llegada === k ? ' aparece' : ''}" style="left:${p.llegada*u - 5}px" title="${p.id} llega en t=${p.llegada}"></div>`;
     if(m && k >= m.fin)
-      h += `<div class="mk mk-fin" style="left:${m.fin*u - 5}px" title="${p.id} termina en t=${m.fin}"></div>`;
+      h += `<div class="mk mk-fin${m.fin === k ? ' aparece' : ''}" style="left:${m.fin*u - 5}px" title="${p.id} termina en t=${m.fin}"></div>`;
     h += '</div></div>';
   });
   h += `<div class="playhead" style="left:${96 + k*u}px"></div>`;
   $('#tl').innerHTML = h;
+  crecerLinea($('#tl'), u, duracionLinea(), true);
   const sc = $('#tlScroll'), x = 96 + k*u;
   if(x > sc.scrollLeft + sc.clientWidth - 40) sc.scrollLeft = x - sc.clientWidth + 60;
   if(x < sc.scrollLeft + 40) sc.scrollLeft = Math.max(0, x - 60);
@@ -1082,8 +1084,10 @@ function renderPanel(){
   const snap = oculto ? st.pre.snap : st.snap;
   const auxDesp = oculto ? null : st.auxDesp;
   const idxDe = id => sim.ps.find(p => p.id === id).i;
-  const chip = (id, txt) => `<span class="chip ${pc(idxDe(id))}">${id} <em>${txt}</em></span>`;
+  const chip = (id, txt) => `<span class="chip ${pc(idxDe(id))}" data-pid="${id}">${id} <em>${txt}</em></span>`;
   const dePid = id => snap.find(x => x.id === id);
+  const ms = anim.avanza ? duracionAnim() : 0;
+  const antesCola = ms ? medirChips($('#cola')) : null, antesDev = ms ? medirChips($('#devEst')) : null;
 
   const prio = usaPrio(cfg.alg);
   const dato = sn => prio
@@ -1115,6 +1119,8 @@ function renderPanel(){
     <div class="cola">${d.ocupa ? chip(d.ocupa, 'restan ' + d.restante) : '<span class="vacio">Sin uso.</span>'}
       ${d.cola.length ? '<span class="cabeza">en cola &rarr;</span>' + d.cola.map(id =>
         chip(id, 'pide ' + dePid(id).restante)).join('') : ''}</div></div>`).join('');
+  deslizarChips($('#cola'), antesCola, ms);
+  deslizarChips($('#devEst'), antesDev, ms);
 
   $('#estados').innerHTML = snap.map(s2 => {
     let det = '';
@@ -1122,7 +1128,7 @@ function renderPanel(){
       det = `CPU ${Math.floor(s2.f/2)+1} &middot; restan ${s2.restante}` + (prio ? ` &middot; ${dato(s2)}` : '');
     else if(s2.estado === 'usandoES') det = `${esc(st.devs[s2.dev].n)} &middot; restan ${s2.restante}`;
     else if(s2.estado === 'esperaES') det = `${esc(st.devs[s2.dev].n)} &middot; pide ${s2.restante}`;
-    return `<div class="est-fila ${pc(s2.i)}"><i class="dot"></i>` +
+    return `<div class="est-fila ${pc(s2.i)}" data-est="${s2.id}"><i class="dot"></i>` +
       `<span class="mono" style="font-size:12.5px;font-weight:500">${s2.id}</span>` +
       `<span class="pill ${s2.estado}">${ETIQ[s2.estado]}</span><span class="num">${det}</span></div>`;
   }).join('');
@@ -1132,6 +1138,14 @@ function renderPanel(){
     : st.so
       ? `<span class="vacio">El sistema operativo sigue cambiando de contexto: guarda el estado de ${st.so.de} y carga el de ${st.so.a}. La CPU no avanza ningún proceso.</span>`
       : '<span class="vacio">Sin cambios: siguen ejecutando los mismos procesos que en el instante anterior.</span>';
+  if(ms){
+    // la etiqueta de quien cambió de estado late una vez; los eventos entran uno tras otro
+    snap.forEach(s2 => { if(anim.estados[s2.id] && anim.estados[s2.id] !== s2.estado)
+      $(`[data-est="${s2.id}"] .pill`).animate([{transform:'scale(1.3)'}, {transform:'none'}], {duration:ms * .6, easing:'ease-out'}); });
+    document.querySelectorAll('#eventos li').forEach((li, i) => li.animate([{opacity:0, transform:'translateY(5px)'}, {opacity:1, transform:'none'}],
+      {duration:ms * .6, delay:i * ms * .15, easing:'ease-out', fill:'backwards'}));
+  }
+  anim.estados = Object.fromEntries(snap.map(s2 => [s2.id, s2.estado]));
   renderDiagrama(st, snap, cola, auxQ, oculto, cfg);
 }
 
@@ -1229,8 +1243,8 @@ function posChips(svg){
 function animarDiagrama(svg, antes, pos, t, tr){
   const token = ++edToken;
   if(!antes || !pos || menosMovimiento.matches || (t !== antes.t + 1 && t !== antes.t)) return;
-  const dur = tocando ? Math.min(650, +$('#vel').value * 0.8) : 650;
-  if(dur < 200) return;
+  const dur = duracionAnim();
+  if(!dur) return;
   // si lo dibujado antes era la instantánea anterior, valen las transiciones del motor (incluido el
   // redespacho tras agotar el quantum); si no (la pregunta del desafío), el camino más corto entre estados
   const exacto = t === antes.t + 1 && !antes.oculto;
@@ -1370,7 +1384,45 @@ function sincronizarModo(){
     x.setAttribute('aria-selected', act ? 'true' : 'false');
   });
 }
+// las animaciones acompañan el avance de a un instante; un salto se dibuja directo
+let anim = {obj:null, paso:-1, avanza:false, estados:{}};
+function duracionAnim(){
+  if(menosMovimiento.matches) return 0;
+  const d = tocando ? Math.min(650, +$('#vel').value * 0.8) : 650;
+  return d < 200 ? 0 : d;
+}
+// la línea de tiempo acompaña al reloj de forma continua, así que se anima a cualquier velocidad
+const duracionLinea = () => anim.avanza && !menosMovimiento.matches ? (tocando ? +$('#vel').value : 400) : 0;
+function crecerLinea(cont, u, ms, cabezal){
+  if(!ms) return;
+  cont.querySelectorAll('.crece').forEach(el => { const w = parseFloat(el.style.width);
+    el.animate([{width:`${w - u}px`}, {width:`${w}px`}], {duration:ms, easing:'linear'}); });
+  const ph = cont.querySelector('.playhead');
+  if(ph && cabezal){ const x = parseFloat(ph.style.left);
+    ph.animate([{left:`${x - u}px`}, {left:`${x}px`}], {duration:ms, easing:'linear'}); }
+  cont.querySelectorAll('.mk.aparece').forEach(el => el.animate([{opacity:0, transform:'scale(.2)'}, {opacity:1, transform:'none'}],
+    {duration:Math.min(300, ms), delay:ms * .7, easing:'ease-out', fill:'backwards'}));
+}
+// FLIP: se mide dónde estaba cada chip antes de redibujar y se lo desliza desde ahí; los nuevos entran
+function medirChips(cont){
+  const m = {};
+  cont.querySelectorAll('[data-pid]').forEach(el => { const b = el.getBoundingClientRect(); m[el.dataset.pid] = {x:b.left, y:b.top}; });
+  return m;
+}
+function deslizarChips(cont, antes, ms){
+  if(!ms || !antes) return;
+  cont.querySelectorAll('[data-pid]').forEach(el => {
+    const a = antes[el.dataset.pid], b = el.getBoundingClientRect();
+    if(!a) el.animate([{opacity:0, transform:'translateX(10px)'}, {opacity:1, transform:'none'}], {duration:ms * .7, easing:'ease-out'});
+    else if(Math.abs(a.x - b.left) + Math.abs(a.y - b.top) > 1)
+      el.animate([{transform:`translate(${a.x - b.left}px,${a.y - b.top}px)`}, {transform:'none'}], {duration:ms, easing:'cubic-bezier(.4,0,.2,1)'});
+  });
+}
+
 function render(){
+  const actual = esCmp() ? sims : sim;
+  anim.avanza = actual === anim.obj && paso === anim.paso + 1;
+  anim.obj = actual; anim.paso = paso;
   renderReloj();
   if(esCmp()){ renderCmp(); return; }
   if(modo === 'ejercicio' && tipoDesafio === 'leer'){ renderTL(); renderRec(); renderIdent(); renderLeer(); return; }
@@ -1856,18 +1908,19 @@ function renderCmp(){
 
   let h = `<div class="row"><div class="lab-cmp"></div><div class="axis" style="width:${Tmax*u}px">${ejes}</div></div>`;
   sims.forEach(({nom, s}) => {
-    const k = Math.min(paso, s.T);
+    const k = Math.min(paso, s.T), cr = r => paso <= s.T && r.a + r.len === k ? ' crece' : '';
     h += `<div class="row"><div class="lab-cmp"><b>${nom}</b><span>fin ${s.T}</span></div>` +
       `<div class="track track-rec" style="width:${s.T*u}px">` +
       tramos(s.cpuL.slice(0, k)).map(r => {
-        if(!r.v) return `<div class="blk rec-idle" style="left:${r.a*u}px;width:${r.len*u}px"></div>`;
-        if(r.v === SO) return `<div class="blk rec-so" style="left:${r.a*u}px;width:${r.len*u}px" title="Cambio de contexto">${r.len*u >= 26 ? 'SO' : ''}</div>`;
+        if(!r.v) return `<div class="blk rec-idle${cr(r)}" style="left:${r.a*u}px;width:${r.len*u}px"></div>`;
+        if(r.v === SO) return `<div class="blk rec-so${cr(r)}" style="left:${r.a*u}px;width:${r.len*u}px" title="Cambio de contexto">${r.len*u >= 26 ? 'SO' : ''}</div>`;
         const pr = s.ps.find(x => x.id === r.v);
-        return `<div class="blk rec-blk ${pc(pr.i)}" style="left:${r.a*u}px;width:${r.len*u}px">${r.len*u >= 22 ? r.v : ''}</div>`;
+        return `<div class="blk rec-blk ${pc(pr.i)}${cr(r)}" style="left:${r.a*u}px;width:${r.len*u}px">${r.len*u >= 22 ? r.v : ''}</div>`;
       }).join('') + '</div></div>';
   });
   h += `<div class="playhead" style="left:${96 + Math.min(paso, Tmax)*u}px"></div>`;
   $('#tl').innerHTML = h;
+  crecerLinea($('#tl'), u, duracionLinea(), paso <= Tmax);
 
   const cols = [{k:'espera', t:'Espera media', d:2}, {k:'peor', t:'Peor espera', d:0},
     {k:'resp', t:'Respuesta media', d:2}, {k:'retorno', t:'Retorno medio', d:2},
