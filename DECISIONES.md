@@ -297,7 +297,7 @@ Los promedios admiten dos decimales, con punto o con coma.
 ## Publicación
 
 - **GitHub Pages** sirve `index.html` desde la rama `main` de
-  `levicot/iso-planificacion-cpu`.
+  `unlp-so/iso-planificacion-cpu`.
 - **Artifact de Claude:** se publica `simulador.html`, generado con
   `npm run fragmento`.
 - La carpeta [`diseno/`](diseno) contiene el lienzo de Claude Design con las
