@@ -207,9 +207,24 @@ test('modo Predecir: se ofrecen todos los procesos, y el que no era candidato ex
   assert.equal(J([...vistos].sort()), J(['esperaES', 'nuevo', 'terminado', 'usandoES']), 'los lotes de ejemplo no cubren todos los estados');
 });
 
-test('modo Predecir: el lote con E/S tiene 15 preguntas, 7 de ellas disputadas', () => {
+test('modo Predecir: el lote con E/S tiene 12 preguntas, 7 de ellas disputadas', () => {
   const L = ejemplo('es'), s = simular(L.ps, L.devs, L.cfg);
-  assert.equal(J([M.preguntasPredecir(s, 'todas').length, M.preguntasPredecir(s, 'disputadas').length]), J([15, 7]));
+  assert.equal(J([M.preguntasPredecir(s, 'todas').length, M.preguntasPredecir(s, 'disputadas').length]), J([12, 7]));
+});
+
+test('modo Predecir: todas las decisiones, pero de cada tramo de CPU ociosa sólo el primer instante', () => {
+  const ociosa = pa => pa && pa.decision && pa.opciones.length === 0;
+  const hayBloqueados = pa => pa.pre.snap.some(x => x.estado === 'usandoES' || x.estado === 'esperaES');
+  for(const L of LOTES()) for(const alg of TODAS){
+    const s = simular(L.ps, L.devs, cfg(alg)), preg = new Set(M.preguntasPredecir(s, 'todas'));
+    for(const pa of s.pasos){
+      if(!pa.decision) continue;
+      const et = `${alg} t=${pa.t}`;
+      if(pa.opciones.length) assert.ok(preg.has(pa.t), `${et}: decisión con candidatos sin preguntar`);
+      else if(ociosa(s.pasos[pa.t - 1])) assert.ok(!preg.has(pa.t), `${et}: repite un instante ocioso`);
+      else assert.equal(preg.has(pa.t), hayBloqueados(pa), `${et}: primer instante ocioso mal filtrado`);
+    }
+  }
 });
 
 test('modo Predecir: sólo las disputadas son exactamente las decisiones con dos o más candidatos', () => {

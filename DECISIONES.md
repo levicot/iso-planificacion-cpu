@@ -207,10 +207,14 @@ que motiva VRR.
 - **Qué instantes se preguntan:** todo instante en que el planificador decide,
   salvo los de CPU ociosa sin nadie bloqueado, que son triviales; una CPU
   ociosa con procesos bloqueados sí se pregunta, porque la tentación es elegir
-  a alguien. *Sólo las disputadas* pregunta únicamente las decisiones con dos o
+  a alguien. Pero de cada tramo de CPU ociosa se pregunta sólo el primer
+  instante: la CPU vuelve a decidir en cada instante porque no hay nadie
+  ejecutando, y preguntar *Ninguno* instante tras instante repetía la misma
+  situación. *Sólo las disputadas* pregunta únicamente las decisiones con dos o
   más candidatos. Al principio dejaba pasar también las de CPU ociosa (cero
   candidatos), y en un tramo ocioso preguntaba *Ninguno* instante tras instante.
-  *Tests:* `modo Predecir: el lote con E/S tiene 15 preguntas, 7 de ellas disputadas`,
+  *Tests:* `modo Predecir: el lote con E/S tiene 12 preguntas, 7 de ellas disputadas`,
+  `modo Predecir: todas las decisiones, pero de cada tramo de CPU ociosa sólo el primer instante`,
   `modo Predecir: sólo las disputadas son exactamente las decisiones con dos o más candidatos`.
 - **La simulación avanza con la respuesta correcta**, no con la del alumno, para
   que un error temprano no arrastre todas las decisiones siguientes.

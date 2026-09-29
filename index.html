@@ -1546,6 +1546,9 @@ function armarEjercicio(){
     if(!pa.decision) return;
     const bloqueados = pa.pre.snap.some(x => x.estado === 'usandoES' || x.estado === 'esperaES');
     if(!pa.opciones.length && !bloqueados) return;
+    // de un tramo de CPU ociosa se pregunta sólo el primer instante: los siguientes repiten la situación
+    const previo = sim.pasos[pa.t - 1];
+    if(!pa.opciones.length && previo && previo.decision && !previo.opciones.length) return;
     // disputada: dos o más procesos listos compiten; una CPU ociosa no lo es
     if(soloDisputadas && pa.opciones.length < 2) return;
     preg.push(pa.t);
