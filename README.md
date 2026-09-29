@@ -230,6 +230,10 @@ Es un único archivo sin dependencias ni compilación. Descargá `index.html` y
 abrilo con doble clic. Funciona sin conexión (sin internet usa la tipografía
 del sistema en lugar de IBM Plex).
 
+El switch de arriba a la derecha alterna entre modo claro y oscuro. Si no se
+toca, la página sigue la preferencia del sistema; si se elige un modo, lo
+recuerda para la próxima vez.
+
 ## Atajos de teclado
 
 `←` `→` un paso · `espacio` reproducir o pausar · `inicio` `fin` a los extremos

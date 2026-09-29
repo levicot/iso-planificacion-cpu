@@ -176,7 +176,18 @@ que motiva VRR.
   corregidos (`.leer-ok`, `.leer-mal`) conservan su color de corrección.
 - **Tema claro y oscuro** con tokens en `:root`, redefinidos para
   `prefers-color-scheme: dark` y para `data-theme`, así la preferencia explícita
-  gana en las dos direcciones.
+  gana en las dos direcciones. Cada tema declara su `color-scheme`, para que los
+  controles nativos (selects, campos numéricos, barras de desplazamiento)
+  acompañen; antes quedaban claros en modo oscuro.
+- **Switch de modo claro / oscuro** arriba a la derecha del encabezado, con
+  `role="switch"`. Mientras nadie lo toca, el tema sigue al sistema o al visor
+  del artifact, que estampa su propio `data-theme`, y el switch sólo refleja el
+  tema vigente. Al tocarlo, la elección se fija en `data-theme` y se guarda en
+  `localStorage` (`planif2_tema`). Un script en el `<head>` la aplica antes de
+  pintar la página, para que no parpadee al cargar.
+- El atajo global de `espacio` (reproducir o pausar) no actúa cuando el foco
+  está en el switch: `espacio` es la tecla estándar para accionar un switch, y
+  sin esta excepción arrancaba la simulación en vez de cambiar el tema.
 
 ## Desafío: Predecir decisiones
 
