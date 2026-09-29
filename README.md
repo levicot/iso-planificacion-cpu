@@ -114,6 +114,12 @@ estados.
   toma la CPU, se resaltan las dos transiciones. Lo mismo cuando agota su
   quantum sin nadie más en la cola: vuelve a Listo y lo despachan de nuevo.
 
+Al avanzar de a un instante, cada proceso que cambia de estado viaja por las
+flechas que recorrió, y los que cambian de lugar dentro de un estado (la cola
+que avanza) se deslizan hasta su posición nueva. Los saltos de la barra de
+tiempo no se animan, y en velocidad *Rápido* tampoco, porque no hay tiempo de
+verlo. Si el sistema pide reducir el movimiento, el diagrama no se anima.
+
 En el desafío *Predecir decisiones*, mientras la pregunta está pendiente, el
 diagrama no muestra el despacho de ese instante.
 

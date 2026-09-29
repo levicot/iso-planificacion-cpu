@@ -282,6 +282,8 @@ td.mejor{color:var(--ink);font-weight:500;background:var(--panel-3);border-radiu
 .ed-chips .chip.ed-cola{background:transparent;border:1.5px dashed var(--mid);padding:1px 6px}
 .ed-chips .vacio{font-size:13px}
 .chip.ed-so{background:var(--panel-3);color:var(--ink-2)}
+.ed-fantasma{pointer-events:none;overflow:visible}
+.ed-fantasma .chip{box-shadow:0 2px 8px rgba(0,0,0,.18)}
 .cabeza{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.08em;
   text-transform:uppercase;color:var(--ink-3)}
 .vacio{color:var(--ink-3);font-size:13px;font-style:italic}
@@ -1154,7 +1156,7 @@ function renderDiagrama(st, snap, cola, auxQ, oculto, cfg){
   // con la pregunta del desafío pendiente no se muestra el despacho de este instante: sería la respuesta
   const tr = transiciones(previo, snap, !oculto && st.decision ? st.respuesta : null);
   const idxDe = id => sim.ps.find(p => p.id === id).i;
-  const chip = (id, em, cls = '', tit = '') => `<span class="chip ${pc(idxDe(id))}${cls}"${tit ? ` title="${tit}"` : ''}>` +
+  const chip = (id, em, cls = '', tit = '') => `<span class="chip ${pc(idxDe(id))}${cls}" data-pid="${id}"${tit ? ` title="${tit}"` : ''}>` +
     `${id}${em ? ` <em>${em}</em>` : ''}</span>`;
   const en = n => snap.filter(s => ESTADO_A_NODO[s.estado] === n);
   const listos = auxQ.map(id => [id, 'aux']).concat(cola.map(id => [id, '']));
@@ -1175,7 +1177,7 @@ function renderDiagrama(st, snap, cola, auxQ, oculto, cfg){
   const arista = (e, activa) => {
     const ids = tr.filter(x => x.de === e.de && x.a === e.a).map(x => x.id);
     const cls = activa ? ' activa' : '';
-    return `<path class="ed-arista${cls}" d="${e.d}" marker-end="url(#edPunta${activa ? 'A' : ''})"/>` +
+    return `<path class="ed-arista${cls}" data-e="${e.de}>${e.a}" d="${e.d}" marker-end="url(#edPunta${activa ? 'A' : ''})"/>` +
       `<text class="ed-rot${cls}" x="${e.x}" y="${e.y}" text-anchor="${e.ta}">${rotulo(e)}${activa ? ': ' + ids.join(', ') : ''}</text>`;
   };
   const activa = e => tr.some(x => x.de === e.de && x.a === e.a);
@@ -1191,8 +1193,95 @@ function renderDiagrama(st, snap, cola, auxQ, oculto, cfg){
       `<rect class="ed-nodo" x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="${n.h / 2}"/>` +
       `<text class="ed-tit" x="${n.x + n.w / 2}" y="${n.y + 17}" text-anchor="middle">${n.t}</text>` +
       `<foreignObject x="${n.x + 14}" y="${n.y + 24}" width="${n.w - 28}" height="${n.h - 30}">` +
-      `<div xmlns="http://www.w3.org/1999/xhtml" class="ed-chips${nombres[k].length >= 5 ? ' denso' : ''}">${chips[k]}</div></foreignObject>`).join('') +
+      `<div xmlns="http://www.w3.org/1999/xhtml" class="ed-chips${nombres[k].length >= 5 ? ' denso' : ''}" data-nodo="${k}">${chips[k]}</div></foreignObject>`).join('') +
     ARISTAS_ED.filter(activa).map(e => arista(e, true)).join('') + '</svg>';
+  const svg = $('#diagramaEstados svg'), pos = posChips(svg);
+  const antes = edPrevio && edPrevio.sim === sim ? edPrevio : null;
+  edPrevio = pos && {sim, t:st.t, oculto, pos};
+  animarDiagrama(svg, antes, pos, st.t, tr);
+}
+
+// animación: cada proceso que cambia de estado viaja por las flechas que recorrió, y el que sigue en
+// el mismo estado pero cambia de lugar (la cola avanza) se desliza hasta su posición nueva
+let edPrevio = null, edToken = 0;
+const menosMovimiento = matchMedia('(prefers-reduced-motion: reduce)');
+function rutaEntre(de, a){
+  const cola = [[de]], vistos = new Set([de]);
+  while(cola.length){
+    const cam = cola.shift(), u = cam[cam.length - 1];
+    if(u === a) return cam;
+    ARISTAS_ED.forEach(e => { if(e.de === u && !vistos.has(e.a)){ vistos.add(e.a); cola.push(cam.concat(e.a)); } });
+  }
+  return null;
+}
+// centro de cada chip de proceso, en coordenadas del viewBox; null si el diagrama no está visible
+function posChips(svg){
+  const r = svg.getBoundingClientRect();
+  if(!r.width) return null;
+  const k = 700 / r.width, pos = {};
+  svg.querySelectorAll('[data-pid]').forEach(el => {
+    const b = el.getBoundingClientRect();
+    pos[el.dataset.pid] = {x:(b.left + b.width / 2 - r.left) * k, y:(b.top + b.height / 2 - r.top) * k,
+      nodo:el.closest('[data-nodo]').dataset.nodo};
+  });
+  return pos;
+}
+function animarDiagrama(svg, antes, pos, t, tr){
+  const token = ++edToken;
+  if(!antes || !pos || menosMovimiento.matches || (t !== antes.t + 1 && t !== antes.t)) return;
+  const dur = tocando ? Math.min(650, +$('#vel').value * 0.8) : 650;
+  if(dur < 200) return;
+  // si lo dibujado antes era la instantánea anterior, valen las transiciones del motor (incluido el
+  // redespacho tras agotar el quantum); si no (la pregunta del desafío), el camino más corto entre estados
+  const exacto = t === antes.t + 1 && !antes.oculto;
+  const NS = 'http://www.w3.org/2000/svg', movs = [];
+  for(const [id, p] of Object.entries(pos)){
+    const q = antes.pos[id];
+    if(!q) continue;
+    const ruta = exacto ? [q.nodo, ...tr.filter(x => x.id === id).map(x => x.a)] : rutaEntre(q.nodo, p.nodo);
+    if(!ruta || ruta[ruta.length - 1] !== p.nodo) continue;
+    if(ruta.length === 1 && Math.hypot(p.x - q.x, p.y - q.y) < 2) continue;
+    // tramos: del lugar anterior a la primera flecha, las flechas, y de la última al lugar nuevo
+    const tramos = [], pto = (x, y) => ({x, y});
+    let desde = pto(q.x, q.y);
+    for(let k = 1; k < ruta.length; k++){
+      const el = svg.querySelector(`[data-e="${ruta[k-1]}>${ruta[k]}"]`), L = el.getTotalLength();
+      const ini = el.getPointAtLength(0), fin = el.getPointAtLength(L);
+      tramos.push({a:desde, b:pto(ini.x, ini.y)}, {el, L});
+      desde = pto(fin.x, fin.y);
+    }
+    tramos.push({a:desde, b:pto(p.x, p.y)});
+    tramos.forEach(s => { if(!s.el) s.L = Math.hypot(s.b.x - s.a.x, s.b.y - s.a.y); });
+    const total = tramos.reduce((a, s) => a + s.L, 0);
+    const chip = svg.querySelector(`[data-pid="${id}"]`);
+    const fo = document.createElementNS(NS, 'foreignObject'), caja = document.createElement('div');
+    fo.setAttribute('class', 'ed-fantasma'); fo.setAttribute('width', 200); fo.setAttribute('height', 40);
+    caja.className = chip.parentNode.className; caja.style.height = '100%';
+    caja.appendChild(chip.cloneNode(true));
+    fo.appendChild(caja); svg.appendChild(fo);
+    chip.style.visibility = 'hidden';
+    movs.push({fo, chip, punto:f => {
+      let d = f * total;
+      for(const s of tramos){
+        if(d <= s.L || s === tramos[tramos.length - 1]){
+          const u = s.L ? Math.min(1, d / s.L) : 1;
+          return s.el ? s.el.getPointAtLength(u * s.L) : pto(s.a.x + (s.b.x - s.a.x) * u, s.a.y + (s.b.y - s.a.y) * u);
+        }
+        d -= s.L;
+      }
+    }});
+  }
+  if(!movs.length) return;
+  const t0 = performance.now();
+  const cuadro = ahora => {
+    if(token !== edToken) return;
+    const k = Math.min(1, (ahora - t0) / dur), f = k < .5 ? 4 * k * k * k : 1 - Math.pow(2 - 2 * k, 3) / 2;
+    movs.forEach(m => { const c = m.punto(f); m.fo.setAttribute('x', c.x - 100); m.fo.setAttribute('y', c.y - 20); });
+    if(k < 1) requestAnimationFrame(cuadro);
+    else movs.forEach(m => { m.fo.remove(); m.chip.style.visibility = ''; });
+  };
+  cuadro(t0);
+  requestAnimationFrame(cuadro);
 }
 
 function renderMetricas(){

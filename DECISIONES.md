@@ -186,6 +186,22 @@ que motiva VRR.
   para los 6 procesos, que es el máximo; desde 5 procesos en un mismo nodo los
   chips se achican.
 
+- **Animación:** cada proceso que cambia de estado viaja por las flechas que
+  recorrió, desde su lugar en el nodo de origen hasta su lugar en el de
+  destino. Los que siguen en el mismo estado pero cambian de posición se
+  deslizan. Se anima sólo al avanzar un instante (o volver a dibujar el mismo):
+  un salto de varios instantes mezclaría movimientos de instantes distintos.
+  Cuando lo dibujado antes era la instantánea anterior, el recorrido sale de
+  `transiciones`, así que incluye el redespacho tras agotar el quantum. Si no
+  (al responder una pregunta del desafío, lo dibujado antes era la instantánea
+  previa a la decisión), se usa el camino más corto entre los dos estados.
+- La duración es 650 ms al avanzar a mano y el 80 % del intervalo al
+  reproducir, para que termine antes del paso siguiente. Por debajo de 200 ms
+  no se anima (velocidad *Rápido*), y tampoco con `prefers-reduced-motion`.
+- El chip que viaja es una copia dentro del mismo SVG, así escala con el
+  diagrama; el real queda oculto hasta que la copia llega. Si llega otro
+  dibujo a mitad de camino, la animación en curso se abandona.
+
 *Test:* `diagrama de estados: transiciones válidas, encadenadas y un despacho por cada decisión`.
 
 ## Interfaz
