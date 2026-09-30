@@ -185,9 +185,86 @@ test('modo Predecir: cada decisión guarda el estado previo y su respuesta es un
   }
 });
 
-test('modo Predecir: el lote con E/S tiene 15 preguntas, 11 de ellas disputadas', () => {
+test('modo Predecir: se ofrecen todos los procesos, y el que no era candidato explica por qué', () => {
+  const clave = {nuevo:'todavía no había llegado', usandoES:'usando', esperaES:'en la cola de', terminado:'ya había terminado'};
+  const vistos = new Set();
+  for(const L of LOTES()) for(const alg of TODAS){
+    const s = simular(L.ps, L.devs, cfg(alg));
+    M.fijar(null, s);
+    for(const pa of s.pasos){
+      if(!pa.decision) continue;
+      for(const p of s.ps){
+        const sn = pa.pre.snap.find(x => x.id === p.id), txt = M.porQueNo(p.id, pa), et = `${alg} t=${pa.t} ${p.id}`;
+        if(pa.opciones.includes(p.id)){ assert.equal(txt, null, `${et}: era candidato y se lo rechaza`); continue; }
+        assert.ok(txt && txt.startsWith(`${p.id} no podía tomar la CPU`), `${et}: sin explicación`);
+        assert.ok(txt.includes(clave[sn.estado]), `${et}: la explicación no corresponde a ${sn.estado}: ${txt}`);
+        if(sn.estado === 'nuevo') assert.ok(txt.includes(`t=${p.llegada}`), `${et}: no dice cuándo llega`);
+        if(sn.estado === 'usandoES' || sn.estado === 'esperaES') assert.ok(txt.includes(L.devs[sn.dev]), `${et}: no nombra el dispositivo`);
+        vistos.add(sn.estado);
+      }
+    }
+  }
+  assert.equal(J([...vistos].sort()), J(['esperaES', 'nuevo', 'terminado', 'usandoES']), 'los lotes de ejemplo no cubren todos los estados');
+});
+
+test('diagrama de estados: transiciones válidas, encadenadas y un despacho por cada decisión', () => {
+  const validas = new Set(['nuevo>listo', 'listo>ejec', 'ejec>listo', 'ejec>bloq', 'bloq>listo', 'ejec>term']);
+  let redespachos = 0;
+  for(const L of LOTES()) for(const alg of TODAS) for(const cambio of [0, 1]){
+    const s = simular(L.ps, L.devs, cfg(alg, {cambio})), cuenta = {};
+    s.pasos.forEach((pa, t) => {
+      const antes = t ? s.pasos[t - 1].snap : null, et = `${alg} costo ${cambio} t=${t}`;
+      const tr = M.transiciones(antes, pa.snap, pa.decision ? pa.respuesta : null);
+      for(const p of pa.snap){
+        let nodo = antes ? M.ESTADO_A_NODO[antes.find(x => x.id === p.id).estado] : 'nuevo';
+        const suyas = tr.filter(x => x.id === p.id);
+        for(const x of suyas){
+          assert.ok(validas.has(`${x.de}>${x.a}`), `${et} ${p.id}: transición imposible ${x.de}>${x.a}`);
+          assert.equal(x.de, nodo, `${et} ${p.id}: transiciones que no se encadenan`);
+          nodo = x.a;
+          cuenta[`${p.id} ${x.de}>${x.a}`] = (cuenta[`${p.id} ${x.de}>${x.a}`] || 0) + 1;
+        }
+        assert.equal(nodo, M.ESTADO_A_NODO[p.estado], `${et} ${p.id}: no llega al estado de la instantánea`);
+        if(suyas.length === 2 && suyas[0].de === 'ejec') redespachos++;
+      }
+    });
+    for(const p of s.ps){
+      const et = `${alg} costo ${cambio} ${p.id}`;
+      const despachos = s.pasos.filter(pa => pa.decision && pa.respuesta === p.id).length;
+      assert.equal(cuenta[`${p.id} listo>ejec`] || 0, despachos, `${et}: despachos en el diagrama`);
+      assert.equal(cuenta[`${p.id} nuevo>listo`], 1, `${et}: admitido`);
+      assert.equal(cuenta[`${p.id} ejec>term`], 1, `${et}: salida`);
+    }
+  }
+  assert.ok(redespachos > 0, 'los lotes no cubren un fin de quantum sin nadie más en la cola');
+});
+
+test('modo Predecir: el lote con E/S tiene 12 preguntas, 7 de ellas disputadas', () => {
   const L = ejemplo('es'), s = simular(L.ps, L.devs, L.cfg);
-  assert.equal(J([M.preguntasPredecir(s, 'todas').length, M.preguntasPredecir(s, 'disputadas').length]), J([15, 11]));
+  assert.equal(J([M.preguntasPredecir(s, 'todas').length, M.preguntasPredecir(s, 'disputadas').length]), J([12, 7]));
+});
+
+test('modo Predecir: todas las decisiones, pero de cada tramo de CPU ociosa sólo el primer instante', () => {
+  const ociosa = pa => pa && pa.decision && pa.opciones.length === 0;
+  const hayBloqueados = pa => pa.pre.snap.some(x => x.estado === 'usandoES' || x.estado === 'esperaES');
+  for(const L of LOTES()) for(const alg of TODAS){
+    const s = simular(L.ps, L.devs, cfg(alg)), preg = new Set(M.preguntasPredecir(s, 'todas'));
+    for(const pa of s.pasos){
+      if(!pa.decision) continue;
+      const et = `${alg} t=${pa.t}`;
+      if(pa.opciones.length) assert.ok(preg.has(pa.t), `${et}: decisión con candidatos sin preguntar`);
+      else if(ociosa(s.pasos[pa.t - 1])) assert.ok(!preg.has(pa.t), `${et}: repite un instante ocioso`);
+      else assert.equal(preg.has(pa.t), hayBloqueados(pa), `${et}: primer instante ocioso mal filtrado`);
+    }
+  }
+});
+
+test('modo Predecir: sólo las disputadas son exactamente las decisiones con dos o más candidatos', () => {
+  for(const L of LOTES()) for(const alg of TODAS){
+    const s = simular(L.ps, L.devs, cfg(alg));
+    const esperadas = s.pasos.filter(pa => pa.decision && pa.opciones.length >= 2).map(pa => pa.t);
+    assert.equal(J(M.preguntasPredecir(s, 'disputadas')), J(esperadas), `${alg}: preguntas del filtro disputadas`);
+  }
 });
 
 test('lotes de ejemplo: valores de referencia, incluidos los que cita el README', () => {

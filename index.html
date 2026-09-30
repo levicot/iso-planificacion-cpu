@@ -4,9 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Planificador paso a paso</title>
+<script>
+// aplica el tema elegido antes de pintar la página, para que no parpadee
+try{ var temaGuardado = localStorage.getItem('planif2_tema');
+  if(temaGuardado === 'dark' || temaGuardado === 'light') document.documentElement.dataset.theme = temaGuardado; }catch(e){}
+</script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
 :root{
+  color-scheme:light;
   --bg:#EDEFF3; --panel:#FFFFFF; --panel-2:#F4F6F8; --panel-3:#E6EAEF;
   --ink:#161920; --ink-2:#545A68; --ink-3:#868D9C;
   --line:#DBDFE6; --line-2:#C3C9D3; --danger:#B0271F;
@@ -19,6 +25,7 @@
   --c6-soft:#EAF3DE; --c6-chip:#C0DD97; --c6-mid:#639922; --c6-deep:#173404;
 }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  color-scheme:dark;
   --bg:#101319; --panel:#191D24; --panel-2:#20252E; --panel-3:#2A313B;
   --ink:#E7EAF0; --ink-2:#A0A7B5; --ink-3:#79808F;
   --line:#2C323C; --line-2:#3C434F; --danger:#F09595;
@@ -31,6 +38,7 @@
   --c6-soft:#173404; --c6-chip:#27500A; --c6-mid:#639922; --c6-deep:#C0DD97;
 }}
 :root[data-theme="dark"]{
+  color-scheme:dark;
   --bg:#101319; --panel:#191D24; --panel-2:#20252E; --panel-3:#2A313B;
   --ink:#E7EAF0; --ink-2:#A0A7B5; --ink-3:#79808F;
   --line:#2C323C; --line-2:#3C434F; --danger:#F09595;
@@ -55,6 +63,17 @@ p{margin:0}
   letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3)}
 .lead{color:var(--ink-2);margin-top:8px}
 header{border-bottom:1px solid var(--line);padding-bottom:0}
+.header-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.tema{display:inline-flex;align-items:center;gap:7px;background:none;border:none;padding:4px 2px;
+  cursor:pointer;color:var(--ink-3);border-radius:6px}
+.tema svg{display:block;width:15px;height:15px}
+.tema-pista{position:relative;width:32px;height:18px;border-radius:9px;flex:none;
+  background:var(--panel-3);border:1px solid var(--line-2)}
+.tema-perilla{position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;
+  background:var(--ink-2);transition:transform .15s}
+.tema[aria-checked="true"] .tema-perilla{transform:translateX(14px)}
+.tema[aria-checked="false"] .tema-sol,.tema[aria-checked="true"] .tema-luna{color:var(--ink)}
+.tema:hover .tema-pista{border-color:var(--ink-3)}
 .vistas{display:flex;gap:28px;margin-top:18px}
 .vista{font-family:inherit;font-size:14.5px;font-weight:500;color:var(--ink-3);background:none;border:none;
   border-bottom:2px solid transparent;padding:8px 1px 11px;margin-bottom:-1px;cursor:pointer}
@@ -117,7 +136,7 @@ input.leer-mal{border-color:var(--c3-mid);background:var(--c3-soft);color:var(--
   font-size:13.5px;color:var(--ink-2);margin-top:12px}
 .ej-tabla .mono{font-size:12.5px}
 .ej-res{font-size:17px;font-weight:500;color:var(--ink)}
-@media (max-width:900px){ .cols,.abajo{grid-template-columns:1fr} }
+@media (max-width:900px){ .cols,.abajo,.fila-ed{grid-template-columns:1fr} }
 
 label{font-size:13px;color:var(--ink-2)}
 input,select{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--ink);
@@ -243,6 +262,28 @@ td.mejor{color:var(--ink);font-weight:500;background:var(--panel-3);border-radiu
 .chip{display:flex;align-items:center;gap:6px;background:var(--chip);color:var(--deep);
   border-radius:6px;padding:4px 9px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;font-weight:600}
 .chip em{font-style:normal;font-weight:400;opacity:.82;font-size:11px}
+.ed-wrap{overflow-x:auto}
+.ed{display:block;width:100%;min-width:480px;max-width:760px;height:auto;margin:0 auto}
+.fila-ed{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:18px;align-items:start}
+.fila-ed.solo{grid-template-columns:minmax(0,1fr)}
+.ed-nodo{fill:var(--panel-2);stroke:var(--line-2);stroke-width:1.2}
+.ed-tit{font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.12em;fill:var(--ink-3)}
+.ed-arista{fill:none;stroke:var(--line-2);stroke-width:1.5}
+.ed-arista.activa{stroke:var(--ink);stroke-width:2.4}
+.ed-punta{fill:var(--line-2)}
+.ed-punta.activa{fill:var(--ink)}
+.ed-rot{font-family:'IBM Plex Sans',sans-serif;font-size:13px;fill:var(--ink-3)}
+.ed-rot.activa{fill:var(--ink);font-weight:600}
+.ed-chips{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;align-content:center;height:100%;overflow:hidden}
+.ed-chips .chip{font-size:13px;padding:2px 7px}
+.ed-chips .chip em{font-size:11.5px}
+.ed-chips.denso .chip{font-size:11px;padding:1px 5px}
+.ed-chips.denso .chip em{font-size:10px}
+.ed-chips .chip.ed-cola{background:transparent;border:1.5px dashed var(--mid);padding:1px 6px}
+.ed-chips .vacio{font-size:13px}
+.chip.ed-so{background:var(--panel-3);color:var(--ink-2)}
+.ed-fantasma{pointer-events:none;overflow:visible}
+.ed-fantasma .chip{box-shadow:0 2px 8px rgba(0,0,0,.18)}
 .cabeza{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.08em;
   text-transform:uppercase;color:var(--ink-3)}
 .vacio{color:var(--ink-3);font-size:13px;font-style:italic}
@@ -304,7 +345,17 @@ kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--panel-
 <body>
 <div class="app">
 <header>
-  <div class="eyebrow">Introducción a sistemas operativos</div>
+  <div class="header-top">
+    <div class="eyebrow">Introducción a sistemas operativos</div>
+    <button class="tema" id="tema" role="switch" aria-checked="false" aria-label="Modo oscuro" title="Modo oscuro">
+      <svg class="tema-sol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+        stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/>
+        <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      <span class="tema-pista"><span class="tema-perilla"></span></span>
+      <svg class="tema-luna" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>
+    </button>
+  </div>
   <h1>Planificador paso a paso</h1>
   <p class="lead">Definí un lote de procesos con sus ráfagas de CPU y sus pedidos de E/S a dispositivos concretos, elegí una política y avanzá el reloj de a una unidad para ver qué decide el planificador en cada instante y por qué.</p>
   <nav class="vistas" role="tablist" aria-label="Vista">
@@ -505,10 +556,17 @@ kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--panel-
     <span class="eyebrow">Estado de cada proceso</span>
     <div class="estados" id="estados"></div>
   </section>
-  <section class="panel ancho" id="panelEventos">
+  <div class="ancho fila-ed" id="filaEstados">
+  <section class="panel" id="panelDiagrama">
+    <span class="eyebrow">Diagrama de estados</span>
+    <div class="ed-wrap" id="diagramaEstados"></div>
+    <p class="hint">Resaltadas, las transiciones de este instante. <b>Bloqueado</b> reúne a los procesos que usan un dispositivo (chip relleno) y a los que esperan en su cola (chip punteado).</p>
+  </section>
+  <section class="panel" id="panelEventos">
     <span class="eyebrow">Qué pasa en este instante</span>
     <div class="ev" id="eventos" aria-live="polite"></div>
   </section>
+  </div>
 </div>
 
 <section class="panel" id="panelMetricas">
@@ -549,7 +607,7 @@ kbd{font-family:'IBM Plex Mono',monospace;font-size:11px;background:var(--panel-
   <p class="err" id="errCodigo" style="display:none"></p>
 </section>
 
-<footer>Atajos de teclado: <kbd>←</kbd> <kbd>→</kbd> para moverte un paso, <kbd>espacio</kbd> para reproducir o pausar, <kbd>inicio</kbd> y <kbd>fin</kbd> para ir a los extremos.<br>Versión en línea: <a href="https://levicot.github.io/iso-planificacion-cpu/">levicot.github.io/iso-planificacion-cpu</a></footer>
+<footer>Atajos de teclado: <kbd>←</kbd> <kbd>→</kbd> para moverte un paso, <kbd>espacio</kbd> para reproducir o pausar, <kbd>inicio</kbd> y <kbd>fin</kbd> para ir a los extremos.<br>Versión en línea: <a href="https://unlp-so.github.io/iso-planificacion-cpu/">unlp-so.github.io/iso-planificacion-cpu</a></footer>
 </div>
 
 <script>
@@ -867,6 +925,22 @@ function simular(ps, nombres, c){
     sobrecarga:t ? soTot / t : 0};
 }
 
+// los cinco estados del modelo clásico: usando E/S y esperando el dispositivo son ambos "bloqueado"
+const ESTADO_A_NODO = {nuevo:'nuevo', listo:'listo', ejecutando:'ejec', usandoES:'bloq', esperaES:'bloq', terminado:'term'};
+// transiciones entre la instantánea anterior y la actual. Un proceso puede recorrer dos en el mismo
+// instante (llega o vuelve de E/S y lo despachan enseguida), y el que agota su quantum sin nadie más
+// en la cola pasa por listo aunque siga ejecutando: por eso el despacho del instante (redespacho)
+function transiciones(antes, ahora, redespacho){
+  const r = [];
+  ahora.forEach(p => {
+    const a = antes ? ESTADO_A_NODO[antes.find(x => x.id === p.id).estado] : 'nuevo', b = ESTADO_A_NODO[p.estado];
+    const camino = a === b ? (a === 'ejec' && p.id === redespacho ? ['ejec', 'listo', 'ejec'] : [])
+      : b === 'ejec' && (a === 'nuevo' || a === 'bloq') ? [a, 'listo', 'ejec'] : [a, b];
+    for(let k = 1; k < camino.length; k++) r.push({id:p.id, de:camino[k-1], a:camino[k]});
+  });
+  return r;
+}
+
 const pc = i => 'pc' + ((i % 6) + 1);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
@@ -953,11 +1027,12 @@ function tramos(arr){
   return r;
 }
 function filaRecurso(lab, serie, k, u, W){
+  const cr = r => r.a + r.len === k ? ' crece' : '';
   const cont = tramos(serie.slice(0,k)).map(r => {
-    if(!r.v) return `<div class="blk rec-idle" style="left:${r.a*u}px;width:${r.len*u}px"></div>`;
-    if(r.v === SO) return `<div class="blk rec-so" style="left:${r.a*u}px;width:${r.len*u}px" title="Cambio de contexto">${r.len*u >= 26 ? 'SO' : ''}</div>`;
+    if(!r.v) return `<div class="blk rec-idle${cr(r)}" style="left:${r.a*u}px;width:${r.len*u}px"></div>`;
+    if(r.v === SO) return `<div class="blk rec-so${cr(r)}" style="left:${r.a*u}px;width:${r.len*u}px" title="Cambio de contexto">${r.len*u >= 26 ? 'SO' : ''}</div>`;
     const p = sim.ps.find(x => x.id === r.v);
-    return `<div class="blk rec-blk ${pc(p.i)}" style="left:${r.a*u}px;width:${r.len*u}px">${r.len*u >= 22 ? r.v : ''}</div>`;
+    return `<div class="blk rec-blk ${pc(p.i)}${cr(r)}" style="left:${r.a*u}px;width:${r.len*u}px">${r.len*u >= 22 ? r.v : ''}</div>`;
   }).join('');
   return `<div class="row"><div class="lab" title="${esc(lab)}"><b>${esc(lab)}</b></div>` +
     `<div class="track track-rec" style="width:${W}px">${cont}</div></div>`;
@@ -982,15 +1057,16 @@ function renderTL(){
     h += `<div class="row ${pc(p.i)}"><div class="lab"><b>${p.id}</b></div><div class="track" style="width:${W}px">`;
     h += tramos(sim.linea[p.id].slice(0,k)).map(r =>
       ['ejecutando','usandoES','esperaES'].includes(r.v)
-        ? `<div class="blk st-${r.v}" style="left:${r.a*u}px;width:${r.len*u}px"></div>` : '').join('');
+        ? `<div class="blk st-${r.v}${r.a + r.len === k ? ' crece' : ''}" style="left:${r.a*u}px;width:${r.len*u}px"></div>` : '').join('');
     if(k >= p.llegada)
-      h += `<div class="mk mk-llega" style="left:${p.llegada*u - 5}px" title="${p.id} llega en t=${p.llegada}"></div>`;
+      h += `<div class="mk mk-llega${p.llegada === k ? ' aparece' : ''}" style="left:${p.llegada*u - 5}px" title="${p.id} llega en t=${p.llegada}"></div>`;
     if(m && k >= m.fin)
-      h += `<div class="mk mk-fin" style="left:${m.fin*u - 5}px" title="${p.id} termina en t=${m.fin}"></div>`;
+      h += `<div class="mk mk-fin${m.fin === k ? ' aparece' : ''}" style="left:${m.fin*u - 5}px" title="${p.id} termina en t=${m.fin}"></div>`;
     h += '</div></div>';
   });
   h += `<div class="playhead" style="left:${96 + k*u}px"></div>`;
   $('#tl').innerHTML = h;
+  crecerLinea($('#tl'), u, duracionLinea(), true);
   const sc = $('#tlScroll'), x = 96 + k*u;
   if(x > sc.scrollLeft + sc.clientWidth - 40) sc.scrollLeft = x - sc.clientWidth + 60;
   if(x < sc.scrollLeft + 40) sc.scrollLeft = Math.max(0, x - 60);
@@ -1008,8 +1084,10 @@ function renderPanel(){
   const snap = oculto ? st.pre.snap : st.snap;
   const auxDesp = oculto ? null : st.auxDesp;
   const idxDe = id => sim.ps.find(p => p.id === id).i;
-  const chip = (id, txt) => `<span class="chip ${pc(idxDe(id))}">${id} <em>${txt}</em></span>`;
+  const chip = (id, txt) => `<span class="chip ${pc(idxDe(id))}" data-pid="${id}">${id} <em>${txt}</em></span>`;
   const dePid = id => snap.find(x => x.id === id);
+  const ms = anim.avanza ? duracionAnim() : 0;
+  const antesCola = ms ? medirChips($('#cola')) : null, antesDev = ms ? medirChips($('#devEst')) : null;
 
   const prio = usaPrio(cfg.alg);
   const dato = sn => prio
@@ -1041,6 +1119,8 @@ function renderPanel(){
     <div class="cola">${d.ocupa ? chip(d.ocupa, 'restan ' + d.restante) : '<span class="vacio">Sin uso.</span>'}
       ${d.cola.length ? '<span class="cabeza">en cola &rarr;</span>' + d.cola.map(id =>
         chip(id, 'pide ' + dePid(id).restante)).join('') : ''}</div></div>`).join('');
+  deslizarChips($('#cola'), antesCola, ms);
+  deslizarChips($('#devEst'), antesDev, ms);
 
   $('#estados').innerHTML = snap.map(s2 => {
     let det = '';
@@ -1048,7 +1128,7 @@ function renderPanel(){
       det = `CPU ${Math.floor(s2.f/2)+1} &middot; restan ${s2.restante}` + (prio ? ` &middot; ${dato(s2)}` : '');
     else if(s2.estado === 'usandoES') det = `${esc(st.devs[s2.dev].n)} &middot; restan ${s2.restante}`;
     else if(s2.estado === 'esperaES') det = `${esc(st.devs[s2.dev].n)} &middot; pide ${s2.restante}`;
-    return `<div class="est-fila ${pc(s2.i)}"><i class="dot"></i>` +
+    return `<div class="est-fila ${pc(s2.i)}" data-est="${s2.id}"><i class="dot"></i>` +
       `<span class="mono" style="font-size:12.5px;font-weight:500">${s2.id}</span>` +
       `<span class="pill ${s2.estado}">${ETIQ[s2.estado]}</span><span class="num">${det}</span></div>`;
   }).join('');
@@ -1058,6 +1138,164 @@ function renderPanel(){
     : st.so
       ? `<span class="vacio">El sistema operativo sigue cambiando de contexto: guarda el estado de ${st.so.de} y carga el de ${st.so.a}. La CPU no avanza ningún proceso.</span>`
       : '<span class="vacio">Sin cambios: siguen ejecutando los mismos procesos que en el instante anterior.</span>';
+  if(ms){
+    // la etiqueta de quien cambió de estado late una vez; los eventos entran uno tras otro
+    snap.forEach(s2 => { if(anim.estados[s2.id] && anim.estados[s2.id] !== s2.estado)
+      $(`[data-est="${s2.id}"] .pill`).animate([{transform:'scale(1.3)'}, {transform:'none'}], {duration:ms * .6, easing:'ease-out'}); });
+    document.querySelectorAll('#eventos li').forEach((li, i) => li.animate([{opacity:0, transform:'translateY(5px)'}, {opacity:1, transform:'none'}],
+      {duration:ms * .6, delay:i * ms * .15, easing:'ease-out', fill:'backwards'}));
+  }
+  anim.estados = Object.fromEntries(snap.map(s2 => [s2.id, s2.estado]));
+  renderDiagrama(st, snap, cola, auxQ, oculto, cfg);
+}
+
+const NODOS_ED = {
+  nuevo:{t:'NUEVO', x:16, y:10, w:240, h:80},
+  term:{t:'TERMINADO', x:444, y:10, w:240, h:80},
+  listo:{t:'LISTO', x:16, y:140, w:260, h:104},
+  ejec:{t:'EN EJECUCIÓN', x:424, y:140, w:260, h:104},
+  bloq:{t:'BLOQUEADO', x:190, y:288, w:320, h:104}
+};
+const ARISTAS_ED = [
+  {de:'nuevo', a:'listo', n:'admitido', d:'M120 90 C120 116 135 114 135 138', x:142, y:118, ta:'start'},
+  {de:'listo', a:'ejec', n:'despacho', d:'M268 223 Q350 262 432 223', x:350, y:274, ta:'middle'},
+  {de:'ejec', a:'listo', n:'interrupción', d:'M432 161 Q350 122 268 161', x:350, y:128, ta:'middle'},
+  {de:'ejec', a:'term', n:'salida', d:'M575 140 C575 114 590 116 590 92', x:597, y:120, ta:'start'},
+  {de:'ejec', a:'bloq', n:'pide E/S', d:'M560 244 C560 300 540 338 514 338', x:552, y:274, ta:'end'},
+  {de:'bloq', a:'listo', n:'fin de E/S', d:'M190 338 C150 338 120 300 120 246', x:128, y:274, ta:'start'}
+];
+
+function renderDiagrama(st, snap, cola, auxQ, oculto, cfg){
+  const previo = st.t > 0 ? sim.pasos[st.t - 1].snap : null;
+  // con la pregunta del desafío pendiente no se muestra el despacho de este instante: sería la respuesta
+  const tr = transiciones(previo, snap, !oculto && st.decision ? st.respuesta : null);
+  const idxDe = id => sim.ps.find(p => p.id === id).i;
+  const chip = (id, em, cls = '', tit = '') => `<span class="chip ${pc(idxDe(id))}${cls}" data-pid="${id}"${tit ? ` title="${tit}"` : ''}>` +
+    `${id}${em ? ` <em>${em}</em>` : ''}</span>`;
+  const en = n => snap.filter(s => ESTADO_A_NODO[s.estado] === n);
+  const listos = auxQ.map(id => [id, 'aux']).concat(cola.map(id => [id, '']));
+  en('listo').forEach(s => { if(!listos.some(x => x[0] === s.id)) listos.push([s.id, '']); });
+  const nombres = {
+    nuevo:en('nuevo').map(s => s.id), listo:listos.map(x => x[0]), ejec:en('ejec').map(s => s.id),
+    bloq:en('bloq').map(s => s.id), term:en('term').map(s => s.id)};
+  const chips = {
+    nuevo:en('nuevo').map(s => chip(s.id, `t=${sim.ps.find(p => p.id === s.id).llegada}`)).join(''),
+    listo:listos.map(([id, em]) => chip(id, em)).join(''),
+    ejec:(!oculto && st.so ? `<span class="chip ed-so">SO <em>carga ${st.so.a}</em></span>` : '') +
+      en('ejec').map(s => chip(s.id)).join('') || '<span class="vacio">libre</span>',
+    bloq:en('bloq').map(s => { const d = esc(st.devs[s.dev].n), usa = s.estado === 'usandoES';
+      return chip(s.id, d, usa ? '' : ' ed-cola', `${s.id} ${usa ? 'usa' : 'espera en la cola de'} ${d}`); }).join(''),
+    term:en('term').map(s => chip(s.id)).join('')};
+  const rotulo = e => e.de === 'ejec' && e.a === 'listo' && tr.some(x => x.de === 'ejec' && x.a === 'listo')
+    ? (usaQuantum(cfg.alg) ? 'fin de quantum' : 'expropiación') : e.n;
+  const arista = (e, activa) => {
+    const ids = tr.filter(x => x.de === e.de && x.a === e.a).map(x => x.id);
+    const cls = activa ? ' activa' : '';
+    return `<path class="ed-arista${cls}" data-e="${e.de}>${e.a}" d="${e.d}" marker-end="url(#edPunta${activa ? 'A' : ''})"/>` +
+      `<text class="ed-rot${cls}" x="${e.x}" y="${e.y}" text-anchor="${e.ta}">${rotulo(e)}${activa ? ': ' + ids.join(', ') : ''}</text>`;
+  };
+  const activa = e => tr.some(x => x.de === e.de && x.a === e.a);
+  const punta = a => `<marker id="edPunta${a ? 'A' : ''}" viewBox="0 0 10 10" refX="9" refY="5" markerUnits="userSpaceOnUse"` +
+    ` markerWidth="${a ? 10 : 8}" markerHeight="${a ? 10 : 8}" orient="auto"><path class="ed-punta${a ? ' activa' : ''}" d="M0,0 L10,5 L0,10 z"/></marker>`;
+  nombres.bloq = en('bloq').map(s => `${s.id} ${s.estado === 'usandoES' ? 'usa' : 'espera'} ${esc(st.devs[s.dev].n)}`);
+  const resumen = Object.entries(NODOS_ED).map(([k, n]) => `${n.t.toLowerCase()}: ${nombres[k].join(', ') || 'ninguno'}`).join('; ');
+  $('#diagramaEstados').innerHTML =
+    `<svg class="ed" viewBox="0 0 700 400" role="img" aria-label="Estados en t=${st.t}. ${resumen}">` +
+    `<defs>${punta(false)}${punta(true)}</defs>` +
+    ARISTAS_ED.filter(e => !activa(e)).map(e => arista(e, false)).join('') +
+    Object.entries(NODOS_ED).map(([k, n]) =>
+      `<rect class="ed-nodo" x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="${n.h / 2}"/>` +
+      `<text class="ed-tit" x="${n.x + n.w / 2}" y="${n.y + 17}" text-anchor="middle">${n.t}</text>` +
+      `<foreignObject x="${n.x + 14}" y="${n.y + 24}" width="${n.w - 28}" height="${n.h - 30}">` +
+      `<div xmlns="http://www.w3.org/1999/xhtml" class="ed-chips${nombres[k].length >= 5 ? ' denso' : ''}" data-nodo="${k}">${chips[k]}</div></foreignObject>`).join('') +
+    ARISTAS_ED.filter(activa).map(e => arista(e, true)).join('') + '</svg>';
+  const svg = $('#diagramaEstados svg'), pos = posChips(svg);
+  const antes = edPrevio && edPrevio.sim === sim ? edPrevio : null;
+  edPrevio = pos && {sim, t:st.t, oculto, pos};
+  animarDiagrama(svg, antes, pos, st.t, tr);
+}
+
+// animación: cada proceso que cambia de estado viaja por las flechas que recorrió, y el que sigue en
+// el mismo estado pero cambia de lugar (la cola avanza) se desliza hasta su posición nueva
+let edPrevio = null, edToken = 0;
+const menosMovimiento = matchMedia('(prefers-reduced-motion: reduce)');
+function rutaEntre(de, a){
+  const cola = [[de]], vistos = new Set([de]);
+  while(cola.length){
+    const cam = cola.shift(), u = cam[cam.length - 1];
+    if(u === a) return cam;
+    ARISTAS_ED.forEach(e => { if(e.de === u && !vistos.has(e.a)){ vistos.add(e.a); cola.push(cam.concat(e.a)); } });
+  }
+  return null;
+}
+// centro de cada chip de proceso, en coordenadas del viewBox; null si el diagrama no está visible
+function posChips(svg){
+  const r = svg.getBoundingClientRect();
+  if(!r.width) return null;
+  const k = 700 / r.width, pos = {};
+  svg.querySelectorAll('[data-pid]').forEach(el => {
+    const b = el.getBoundingClientRect();
+    pos[el.dataset.pid] = {x:(b.left + b.width / 2 - r.left) * k, y:(b.top + b.height / 2 - r.top) * k,
+      nodo:el.closest('[data-nodo]').dataset.nodo};
+  });
+  return pos;
+}
+function animarDiagrama(svg, antes, pos, t, tr){
+  const token = ++edToken;
+  if(!antes || !pos || menosMovimiento.matches || (t !== antes.t + 1 && t !== antes.t)) return;
+  const dur = duracionAnim();
+  if(!dur) return;
+  // si lo dibujado antes era la instantánea anterior, valen las transiciones del motor (incluido el
+  // redespacho tras agotar el quantum); si no (la pregunta del desafío), el camino más corto entre estados
+  const exacto = t === antes.t + 1 && !antes.oculto;
+  const NS = 'http://www.w3.org/2000/svg', movs = [];
+  for(const [id, p] of Object.entries(pos)){
+    const q = antes.pos[id];
+    if(!q) continue;
+    const ruta = exacto ? [q.nodo, ...tr.filter(x => x.id === id).map(x => x.a)] : rutaEntre(q.nodo, p.nodo);
+    if(!ruta || ruta[ruta.length - 1] !== p.nodo) continue;
+    if(ruta.length === 1 && Math.hypot(p.x - q.x, p.y - q.y) < 2) continue;
+    // tramos: del lugar anterior a la primera flecha, las flechas, y de la última al lugar nuevo
+    const tramos = [], pto = (x, y) => ({x, y});
+    let desde = pto(q.x, q.y);
+    for(let k = 1; k < ruta.length; k++){
+      const el = svg.querySelector(`[data-e="${ruta[k-1]}>${ruta[k]}"]`), L = el.getTotalLength();
+      const ini = el.getPointAtLength(0), fin = el.getPointAtLength(L);
+      tramos.push({a:desde, b:pto(ini.x, ini.y)}, {el, L});
+      desde = pto(fin.x, fin.y);
+    }
+    tramos.push({a:desde, b:pto(p.x, p.y)});
+    tramos.forEach(s => { if(!s.el) s.L = Math.hypot(s.b.x - s.a.x, s.b.y - s.a.y); });
+    const total = tramos.reduce((a, s) => a + s.L, 0);
+    const chip = svg.querySelector(`[data-pid="${id}"]`);
+    const fo = document.createElementNS(NS, 'foreignObject'), caja = document.createElement('div');
+    fo.setAttribute('class', 'ed-fantasma'); fo.setAttribute('width', 200); fo.setAttribute('height', 40);
+    caja.className = chip.parentNode.className; caja.style.height = '100%';
+    caja.appendChild(chip.cloneNode(true));
+    fo.appendChild(caja); svg.appendChild(fo);
+    chip.style.visibility = 'hidden';
+    movs.push({fo, chip, punto:f => {
+      let d = f * total;
+      for(const s of tramos){
+        if(d <= s.L || s === tramos[tramos.length - 1]){
+          const u = s.L ? Math.min(1, d / s.L) : 1;
+          return s.el ? s.el.getPointAtLength(u * s.L) : pto(s.a.x + (s.b.x - s.a.x) * u, s.a.y + (s.b.y - s.a.y) * u);
+        }
+        d -= s.L;
+      }
+    }});
+  }
+  if(!movs.length) return;
+  const t0 = performance.now();
+  const cuadro = ahora => {
+    if(token !== edToken) return;
+    const k = Math.min(1, (ahora - t0) / dur), f = k < .5 ? 4 * k * k * k : 1 - Math.pow(2 - 2 * k, 3) / 2;
+    movs.forEach(m => { const c = m.punto(f); m.fo.setAttribute('x', c.x - 100); m.fo.setAttribute('y', c.y - 20); });
+    if(k < 1) requestAnimationFrame(cuadro);
+    else movs.forEach(m => { m.fo.remove(); m.chip.style.visibility = ''; });
+  };
+  cuadro(t0);
+  requestAnimationFrame(cuadro);
 }
 
 function renderMetricas(){
@@ -1112,6 +1350,7 @@ function recalcular(){
   $('#leerBarra').hidden = !leerMode;
   $('#panelLeer').hidden = !leerMode;
   $('#panelEventos').hidden = ejMode;
+  $('#filaEstados').classList.toggle('solo', ejMode);
   $('#panelesUno').hidden = esCmp() || leerMode;
   $('#panelMetricas').hidden = esCmp() || ejMode;
   $('#panelResultado').hidden = true;
@@ -1145,7 +1384,45 @@ function sincronizarModo(){
     x.setAttribute('aria-selected', act ? 'true' : 'false');
   });
 }
+// las animaciones acompañan el avance de a un instante; un salto se dibuja directo
+let anim = {obj:null, paso:-1, avanza:false, estados:{}};
+function duracionAnim(){
+  if(menosMovimiento.matches) return 0;
+  const d = tocando ? Math.min(650, +$('#vel').value * 0.8) : 650;
+  return d < 200 ? 0 : d;
+}
+// la línea de tiempo acompaña al reloj de forma continua, así que se anima a cualquier velocidad
+const duracionLinea = () => anim.avanza && !menosMovimiento.matches ? (tocando ? +$('#vel').value : 400) : 0;
+function crecerLinea(cont, u, ms, cabezal){
+  if(!ms) return;
+  cont.querySelectorAll('.crece').forEach(el => { const w = parseFloat(el.style.width);
+    el.animate([{width:`${w - u}px`}, {width:`${w}px`}], {duration:ms, easing:'linear'}); });
+  const ph = cont.querySelector('.playhead');
+  if(ph && cabezal){ const x = parseFloat(ph.style.left);
+    ph.animate([{left:`${x - u}px`}, {left:`${x}px`}], {duration:ms, easing:'linear'}); }
+  cont.querySelectorAll('.mk.aparece').forEach(el => el.animate([{opacity:0, transform:'scale(.2)'}, {opacity:1, transform:'none'}],
+    {duration:Math.min(300, ms), delay:ms * .7, easing:'ease-out', fill:'backwards'}));
+}
+// FLIP: se mide dónde estaba cada chip antes de redibujar y se lo desliza desde ahí; los nuevos entran
+function medirChips(cont){
+  const m = {};
+  cont.querySelectorAll('[data-pid]').forEach(el => { const b = el.getBoundingClientRect(); m[el.dataset.pid] = {x:b.left, y:b.top}; });
+  return m;
+}
+function deslizarChips(cont, antes, ms){
+  if(!ms || !antes) return;
+  cont.querySelectorAll('[data-pid]').forEach(el => {
+    const a = antes[el.dataset.pid], b = el.getBoundingClientRect();
+    if(!a) el.animate([{opacity:0, transform:'translateX(10px)'}, {opacity:1, transform:'none'}], {duration:ms * .7, easing:'ease-out'});
+    else if(Math.abs(a.x - b.left) + Math.abs(a.y - b.top) > 1)
+      el.animate([{transform:`translate(${a.x - b.left}px,${a.y - b.top}px)`}, {transform:'none'}], {duration:ms, easing:'cubic-bezier(.4,0,.2,1)'});
+  });
+}
+
 function render(){
+  const actual = esCmp() ? sims : sim;
+  anim.avanza = actual === anim.obj && paso === anim.paso + 1;
+  anim.obj = actual; anim.paso = paso;
   renderReloj();
   if(esCmp()){ renderCmp(); return; }
   if(modo === 'ejercicio' && tipoDesafio === 'leer'){ renderTL(); renderRec(); renderIdent(); renderLeer(); return; }
@@ -1477,6 +1754,19 @@ function renderLeer(){
   }
 }
 
+// por qué un proceso no podía tomar la CPU en una decisión; null si estaba listo y era candidato
+function porQueNo(id, st){
+  const sn = st.pre.snap.find(x => x.id === id);
+  if(!sn || sn.estado === 'listo') return null;
+  const dev = sn.dev !== null ? st.devs[sn.dev].n : '';
+  const motivos = {
+    nuevo:`todavía no había llegado, llega en t=${sim.ps.find(p => p.id === id).llegada}`,
+    usandoES:`estaba bloqueado, usando ${dev}`,
+    esperaES:`estaba bloqueado en la cola de ${dev}`,
+    terminado:'ya había terminado'};
+  return `${id} no podía tomar la CPU: ${motivos[sn.estado] || 'no estaba listo'}.`;
+}
+
 function extraDe(st){
   const cfg = ctx().cfg;
   if(!st.respuesta) return null;
@@ -1504,7 +1794,11 @@ function armarEjercicio(){
     if(!pa.decision) return;
     const bloqueados = pa.pre.snap.some(x => x.estado === 'usandoES' || x.estado === 'esperaES');
     if(!pa.opciones.length && !bloqueados) return;
-    if(soloDisputadas && pa.opciones.length === 1) return;
+    // de un tramo de CPU ociosa se pregunta sólo el primer instante: los siguientes repiten la situación
+    const previo = sim.pasos[pa.t - 1];
+    if(!pa.opciones.length && previo && previo.decision && !previo.opciones.length) return;
+    // disputada: dos o más procesos listos compiten; una CPU ociosa no lo es
+    if(soloDisputadas && pa.opciones.length < 2) return;
     preg.push(pa.t);
   });
   ej = {preguntas:preg, i:0, ok:0, mal:[], respondida:false, elegida:null,
@@ -1530,9 +1824,10 @@ function renderResumenEj(){
 function ejFeedback(st){
   const acerto = ej.elegida === st.respuesta;
   const razones = st.ev.filter(e => /Se despacha|expropia|Cambio de contexto/.test(e.txt)).map(e => e.txt);
-  const cuerpo = razones.length
-    ? '<ul>' + razones.map(x => `<li>${x}</li>`).join('') + '</ul>'
-    : '<ul><li>Ningún proceso está listo: los que quedan están bloqueados en E/S o todavía no llegaron, así que la CPU queda ociosa.</li></ul>';
+  const noPodia = !acerto && ej.elegida ? porQueNo(ej.elegida, st) : null;
+  const cuerpo = '<ul>' + (noPodia ? `<li>${noPodia}</li>` : '') + (razones.length
+    ? razones.map(x => `<li>${x}</li>`).join('')
+    : '<li>Ningún proceso está listo: los que quedan están bloqueados en E/S o todavía no llegaron, así que la CPU queda ociosa.</li>') + '</ul>';
   const x = ej.extra, pendiente = x && ej.extraElegida === null;
   let h = `<div class="ej-fb"><b>${acerto ? 'Correcto.' : `No: la respuesta era ${st.respuesta || 'ninguno'}.`}</b>` +
     (pendiente ? '' : cuerpo);
@@ -1591,7 +1886,7 @@ function renderEjercicio(){
   $('#ejT').textContent = t;
   $('#ejPregunta').innerHTML =
     `<div class="ej-preg">¿Qué proceso toma la CPU en el instante ${t}?</div><div class="ej-ops">` +
-    st.opciones.concat([null]).map(id => {
+    sim.ps.map(p => p.id).concat([null]).map(id => {
       let cls = 'ej-op';
       if(ej.respondida){
         if(id === st.respuesta) cls += ' correcta';
@@ -1613,18 +1908,19 @@ function renderCmp(){
 
   let h = `<div class="row"><div class="lab-cmp"></div><div class="axis" style="width:${Tmax*u}px">${ejes}</div></div>`;
   sims.forEach(({nom, s}) => {
-    const k = Math.min(paso, s.T);
+    const k = Math.min(paso, s.T), cr = r => paso <= s.T && r.a + r.len === k ? ' crece' : '';
     h += `<div class="row"><div class="lab-cmp"><b>${nom}</b><span>fin ${s.T}</span></div>` +
       `<div class="track track-rec" style="width:${s.T*u}px">` +
       tramos(s.cpuL.slice(0, k)).map(r => {
-        if(!r.v) return `<div class="blk rec-idle" style="left:${r.a*u}px;width:${r.len*u}px"></div>`;
-        if(r.v === SO) return `<div class="blk rec-so" style="left:${r.a*u}px;width:${r.len*u}px" title="Cambio de contexto">${r.len*u >= 26 ? 'SO' : ''}</div>`;
+        if(!r.v) return `<div class="blk rec-idle${cr(r)}" style="left:${r.a*u}px;width:${r.len*u}px"></div>`;
+        if(r.v === SO) return `<div class="blk rec-so${cr(r)}" style="left:${r.a*u}px;width:${r.len*u}px" title="Cambio de contexto">${r.len*u >= 26 ? 'SO' : ''}</div>`;
         const pr = s.ps.find(x => x.id === r.v);
-        return `<div class="blk rec-blk ${pc(pr.i)}" style="left:${r.a*u}px;width:${r.len*u}px">${r.len*u >= 22 ? r.v : ''}</div>`;
+        return `<div class="blk rec-blk ${pc(pr.i)}${cr(r)}" style="left:${r.a*u}px;width:${r.len*u}px">${r.len*u >= 22 ? r.v : ''}</div>`;
       }).join('') + '</div></div>';
   });
   h += `<div class="playhead" style="left:${96 + Math.min(paso, Tmax)*u}px"></div>`;
   $('#tl').innerHTML = h;
+  crecerLinea($('#tl'), u, duracionLinea(), paso <= Tmax);
 
   const cols = [{k:'espera', t:'Espera media', d:2}, {k:'peor', t:'Peor espera', d:0},
     {k:'resp', t:'Respuesta media', d:2}, {k:'retorno', t:'Retorno medio', d:2},
@@ -1766,7 +2062,8 @@ $('#ejBarra').addEventListener('click', e => {
     ej.extraElegida = null; ej.extraOk = false;
     if(ej.elegida === st.respuesta) ej.ok++;
     else ej.mal.push({t:st.t, elegida:ej.elegida, correcta:st.respuesta,
-      txt:(st.ev.find(x => /Se despacha/.test(x.txt)) || {txt:'No había ningún proceso listo.'}).txt});
+      txt:[ej.elegida && porQueNo(ej.elegida, st),
+        (st.ev.find(x => /Se despacha/.test(x.txt)) || {txt:'No había ningún proceso listo.'}).txt].filter(Boolean).join(' ')});
     paso = Math.min(st.t + 1, sim.T);
     render();
     return;
@@ -1870,7 +2167,8 @@ document.addEventListener('keydown', e => {
   const acc = {ArrowRight:() => irA(paso+1), ArrowLeft:() => irA(paso-1),
     Home:() => irA(0), End:() => irA(maxPaso())};
   if(acc[e.key]){ pausar(); acc[e.key](); e.preventDefault(); }
-  else if(e.key === ' '){ tocando ? pausar() : reproducir(); e.preventDefault(); }
+  // el espacio sobre el switch de tema lo acciona, como en cualquier switch
+  else if(e.key === ' ' && e.target.id !== 'tema'){ tocando ? pausar() : reproducir(); e.preventDefault(); }
 });
 let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => sim && (esCmp() ? renderCmp() : renderTL()), 120); });
 
@@ -1881,6 +2179,23 @@ function refrescarControles(){
 }
 $('#ejPolitica').innerHTML = '<option value="azar">Al azar</option>' +
   ALGS.map(a => `<option value="${a.id}">${a.n}</option>`).join('');
+// sin elección guardada el tema sigue al sistema (o al visor del artifact); tocar el switch lo fija
+const oscuroSistema = matchMedia('(prefers-color-scheme: dark)');
+function temaEfectivo(){
+  const t = document.documentElement.dataset.theme;
+  return t === 'dark' || t === 'light' ? t : (oscuroSistema.matches ? 'dark' : 'light');
+}
+function sincronizarTema(){ $('#tema').setAttribute('aria-checked', temaEfectivo() === 'dark' ? 'true' : 'false'); }
+$('#tema').addEventListener('click', () => {
+  const t = temaEfectivo() === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = t;
+  try{ localStorage.setItem('planif2_tema', t); }catch(e){}
+  sincronizarTema();
+});
+oscuroSistema.addEventListener('change', sincronizarTema);
+new MutationObserver(sincronizarTema).observe(document.documentElement, {attributes:true, attributeFilter:['data-theme']});
+sincronizarTema();
+
 cargarGuardado();
 try{ const pv = localStorage.getItem('planif2_previo');
   if(pv){ const o = decodificar(pv); previoSim = {lote:o.l, devs:o.d, cfg:o.c}; } }catch(e){}

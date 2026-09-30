@@ -1,6 +1,6 @@
 # Planificador paso a paso
 
-**▶ [Abrir el simulador](https://levicot.github.io/iso-planificacion-cpu/)**
+**▶ [Abrir el simulador](https://unlp-so.github.io/iso-planificacion-cpu/)**
 
 Simulador visual de algoritmos de planificación de procesos para la materia
 **Introducción a Sistemas Operativos**. Los alumnos definen un lote de procesos
@@ -93,6 +93,54 @@ Sobre la fila de cada proceso, dos marcas acotan su vida: un triángulo hacia
 arriba en el borde inferior marca el instante en que **llega** al sistema, y
 uno hacia abajo en el borde superior el instante en que **termina**.
 
+## Diagrama de estados
+
+Al lado del panel *Qué pasa en este instante*, el diagrama de cinco estados
+—nuevo, listo, en ejecución, bloqueado y terminado— muestra dónde está cada
+proceso en el instante actual y resalta las transiciones que ocurren en él:
+*admitido*, *despacho*, *fin de quantum* o *expropiación*, *pide E/S*, *fin de
+E/S* y *salida*. Al avanzar el reloj se ve cómo se mueven los procesos entre
+estados.
+
+- **Bloqueado** reúne a los procesos que usan un dispositivo (chip relleno) y a
+  los que esperan en su cola (chip punteado).
+- En **Nuevo** figuran los procesos que todavía no llegaron, con su instante de
+  llegada.
+- **Listo** respeta el orden de la cola. En VRR, los de la cola auxiliar van
+  primero, marcados *aux*.
+- Durante un cambio de contexto, **En ejecución** muestra al sistema operativo
+  cargando al proceso elegido.
+- Si en un mismo instante un proceso llega y lo despachan, o vuelve de E/S y
+  toma la CPU, se resaltan las dos transiciones. Lo mismo cuando agota su
+  quantum sin nadie más en la cola: vuelve a Listo y lo despachan de nuevo.
+
+Al avanzar de a un instante, cada proceso que cambia de estado viaja por las
+flechas que recorrió, y los que cambian de lugar dentro de un estado (la cola
+que avanza) se deslizan hasta su posición nueva. Los saltos de la barra de
+tiempo no se animan, y en velocidad *Rápido* tampoco, porque no hay tiempo de
+verlo. Si el sistema pide reducir el movimiento, el diagrama no se anima.
+
+En el desafío *Predecir decisiones*, mientras la pregunta está pendiente, el
+diagrama no muestra el despacho de ese instante.
+
+### Animaciones
+
+Al avanzar de a un instante, además del diagrama de estados:
+
+- **Línea de tiempo:** los bloques crecen al ritmo del reloj y el cursor se
+  desliza. Las marcas de llegada y fin aparecen cuando el cursor llega a ellas.
+  También en los modos de comparación.
+- **Cola de listos y dispositivos:** los procesos se deslizan cuando la cola
+  avanza o pasan de esperar un dispositivo a usarlo, y los que llegan entran
+  deslizándose.
+- **Estado de cada proceso:** la etiqueta de los que cambiaron de estado late
+  una vez.
+- **Qué pasa en este instante:** los eventos aparecen uno tras otro.
+
+Los saltos no se animan. En velocidad *Rápido* sólo se anima la línea de
+tiempo, que acompaña al reloj de forma continua. Si el sistema pide reducir el
+movimiento, no se anima nada.
+
 ## Convenciones de desempate
 
 Están listadas en la aplicación, bajo las métricas. Las que más suelen generar
@@ -120,8 +168,11 @@ discusión:
 La pestaña **Desafío** invierte la herramienta: en vez de mostrar
 la respuesta, la pregunta. En cada instante en que el planificador tiene que
 elegir, oculta el panel de eventos y las métricas y pregunta **qué proceso toma
-la CPU**, ofreciendo los procesos elegibles más la opción *ninguno, la CPU queda
-ociosa*. Los paneles de definición se colapsan a un resumen de sólo lectura; la
+la CPU**, ofreciendo todos los procesos del lote más la opción *ninguno, la CPU
+queda ociosa*: no sólo los que están en la cola de listos, porque parte del
+ejercicio es darse cuenta de cuáles pueden ejecutar. Si se elige uno que no
+podía, la corrección dice por qué: todavía no había llegado, estaba bloqueado
+en E/S o ya había terminado. Los paneles de definición se colapsan a un resumen de sólo lectura; la
 cola de listos, los dispositivos y el estado de cada proceso siguen visibles,
 porque son la información con la que hay que razonar.
 
@@ -132,8 +183,12 @@ muestra el puntaje, la lista de errores con su explicación, y recién ahí las
 métricas del lote.
 
 El selector elige entre preguntar **todas las decisiones** o **sólo las
-disputadas** —aquellas con más de un candidato—, que sobre el lote con E/S son
-15 y 11 respectivamente.
+disputadas** —aquellas con más de un proceso listo compitiendo por la CPU—,
+que sobre el lote con E/S son 12 y 7 respectivamente. Cuando la CPU queda
+ociosa se pregunta sólo el primer instante del tramo, porque los siguientes
+repiten la misma situación; y con *sólo las disputadas* ni siquiera ese: la
+siguiente pregunta llega cuando vuelve a haber competencia en la cola de
+listos.
 
 Cuando la política lo amerita aparece una **segunda pregunta**, y sólo entonces:
 en VRR, por cuántas unidades recibe la CPU el proceso despachado desde la cola
@@ -229,6 +284,10 @@ cuentas de usuario.
 Es un único archivo sin dependencias ni compilación. Descargá `index.html` y
 abrilo con doble clic. Funciona sin conexión (sin internet usa la tipografía
 del sistema en lugar de IBM Plex).
+
+El switch de arriba a la derecha alterna entre modo claro y oscuro. Si no se
+toca, la página sigue la preferencia del sistema; si se elige un modo, lo
+recuerda para la próxima vez.
 
 ## Atajos de teclado
 

@@ -161,6 +161,67 @@ que motiva VRR.
 - *Comparar quantums* sólo aparece con las políticas que usan quantum (Round
   Robin y VRR). El barrido es sobre Round Robin con quantum 1, 2, 4 y 8.
 
+## Diagrama de estados
+
+- Es el modelo clásico de cinco estados. El simulador distingue seis, así que
+  *usando E/S* y *esperando el dispositivo* van los dos a **Bloqueado**
+  (`ESTADO_A_NODO`), y el chip los diferencia: relleno si usa el dispositivo,
+  punteado si espera en su cola, la misma distinción que hace la línea de
+  tiempo. El chip muestra sólo el nombre del dispositivo, y el detalle queda en
+  el tooltip y en la etiqueta accesible. Con textos como *espera Impresora*,
+  seis procesos bloqueados no entraban en el nodo.
+- Las transiciones se deducen comparando la instantánea de un instante con la
+  del anterior (`transiciones`). Cuando un proceso hace dos transiciones en un
+  mismo instante (llega y lo despachan, o vuelve de E/S y toma la CPU), se
+  descomponen pasando por Listo. El que agota su quantum sin nadie más en la
+  cola sigue ejecutando entre un instante y el otro, pero pasó por Listo: se
+  detecta porque el despacho de ese instante (`respuesta`) es él mismo.
+- El rótulo de ejecución → listo es *fin de quantum* en Round Robin y VRR, y
+  *expropiación* en SRTF y Prioridad expropiativa.
+- En *Predecir decisiones*, con la pregunta pendiente, se dibuja desde la
+  instantánea previa a la decisión y sin el despacho del instante, que sería la
+  respuesta.
+- Va al lado de *Qué pasa en este instante* (3/5 y 2/5 del ancho): a media
+  columna el texto de los chips quedaba de 9 a 10 px. Los nodos tienen lugar
+  para los 6 procesos, que es el máximo; desde 5 procesos en un mismo nodo los
+  chips se achican.
+
+- **Animación:** cada proceso que cambia de estado viaja por las flechas que
+  recorrió, desde su lugar en el nodo de origen hasta su lugar en el de
+  destino. Los que siguen en el mismo estado pero cambian de posición se
+  deslizan. Se anima sólo al avanzar un instante (o volver a dibujar el mismo):
+  un salto de varios instantes mezclaría movimientos de instantes distintos.
+  Cuando lo dibujado antes era la instantánea anterior, el recorrido sale de
+  `transiciones`, así que incluye el redespacho tras agotar el quantum. Si no
+  (al responder una pregunta del desafío, lo dibujado antes era la instantánea
+  previa a la decisión), se usa el camino más corto entre los dos estados.
+- La duración es 650 ms al avanzar a mano y el 80 % del intervalo al
+  reproducir, para que termine antes del paso siguiente. Por debajo de 200 ms
+  no se anima (velocidad *Rápido*), y tampoco con `prefers-reduced-motion`.
+- El chip que viaja es una copia dentro del mismo SVG, así escala con el
+  diagrama; el real queda oculto hasta que la copia llega. Si llega otro
+  dibujo a mitad de camino, la animación en curso se abandona.
+
+*Test:* `diagrama de estados: transiciones válidas, encadenadas y un despacho por cada decisión`.
+
+### Animaciones del resto de la página
+
+- Todas comparten una sola regla (`anim`, `duracionAnim`): se anima sólo si el
+  dibujo nuevo es el instante siguiente del mismo lote (la misma simulación, o
+  el mismo conjunto de simulaciones en los modos de comparación). La duración
+  es la del diagrama: 650 ms a mano, el 80 % del intervalo al reproducir, nada
+  por debajo de 200 ms ni con `prefers-reduced-motion`.
+- **Excepción:** la línea de tiempo (`duracionLinea`) dura el intervalo
+  completo al reproducir y se anima también en *Rápido*. Es un crecimiento
+  lineal que acompaña al reloj, así que se sigue a cualquier velocidad, y
+  encadenado con el paso siguiente queda continuo. A mano dura 400 ms.
+- La cola de listos y los dispositivos usan FLIP: se mide dónde estaba cada
+  chip antes de redibujar y se lo desliza desde ahí. Es la técnica que menos
+  toca el código de dibujo, que sigue reemplazando el HTML completo.
+- No hay tests automáticos para esto: es sólo presentación y no cambia ningún
+  dato. Se verificó en el navegador contando las animaciones que arranca cada
+  paso.
+
 ## Interfaz
 
 - **Pestañas Simulación y Desafío** arriba de todo. El desafío cambia la
@@ -176,7 +237,18 @@ que motiva VRR.
   corregidos (`.leer-ok`, `.leer-mal`) conservan su color de corrección.
 - **Tema claro y oscuro** con tokens en `:root`, redefinidos para
   `prefers-color-scheme: dark` y para `data-theme`, así la preferencia explícita
-  gana en las dos direcciones.
+  gana en las dos direcciones. Cada tema declara su `color-scheme`, para que los
+  controles nativos (selects, campos numéricos, barras de desplazamiento)
+  acompañen; antes quedaban claros en modo oscuro.
+- **Switch de modo claro / oscuro** arriba a la derecha del encabezado, con
+  `role="switch"`. Mientras nadie lo toca, el tema sigue al sistema o al visor
+  del artifact, que estampa su propio `data-theme`, y el switch sólo refleja el
+  tema vigente. Al tocarlo, la elección se fija en `data-theme` y se guarda en
+  `localStorage` (`planif2_tema`). Un script en el `<head>` la aplica antes de
+  pintar la página, para que no parpadee al cargar.
+- El atajo global de `espacio` (reproducir o pausar) no actúa cuando el foco
+  está en el switch: `espacio` es la tecla estándar para accionar un switch, y
+  sin esta excepción arrancaba la simulación en vez de cambiar el tema.
 
 ## Desafío: Predecir decisiones
 
@@ -184,11 +256,27 @@ que motiva VRR.
   instantánea del instante ya muestra al elegido ejecutando, y revelaba la
   respuesta.
   *Test:* `modo Predecir: cada decisión guarda el estado previo y su respuesta es una de las opciones`.
+- **Se ofrecen todos los procesos del lote**, más *Ninguno*, y no sólo los
+  candidatos de la cola de listos. Ofrecer sólo los candidatos hacía trivial
+  la pregunta: con la cola vacía el único botón era *Ninguno*, y con un solo
+  candidato bastaba copiarlo. Así hay que distinguir primero quién puede
+  ejecutar (no llegó, está bloqueado en E/S, terminó) y después aplicar la
+  política. Si se elige un proceso que no podía, la corrección explica por qué
+  (`porQueNo`). El filtro *sólo las disputadas* sigue contando candidatos, no
+  botones.
+  *Test:* `modo Predecir: se ofrecen todos los procesos, y el que no era candidato explica por qué`.
 - **Qué instantes se preguntan:** todo instante en que el planificador decide,
-  salvo los de CPU ociosa sin nadie bloqueado, que son triviales. *Sólo las
-  disputadas* descarta además los de un único candidato; una CPU ociosa con
-  procesos bloqueados sí se pregunta, porque la tentación es elegir a alguien.
-  *Test:* `modo Predecir: el lote con E/S tiene 15 preguntas, 11 de ellas disputadas`.
+  salvo los de CPU ociosa sin nadie bloqueado, que son triviales; una CPU
+  ociosa con procesos bloqueados sí se pregunta, porque la tentación es elegir
+  a alguien. Pero de cada tramo de CPU ociosa se pregunta sólo el primer
+  instante: la CPU vuelve a decidir en cada instante porque no hay nadie
+  ejecutando, y preguntar *Ninguno* instante tras instante repetía la misma
+  situación. *Sólo las disputadas* pregunta únicamente las decisiones con dos o
+  más candidatos. Al principio dejaba pasar también las de CPU ociosa (cero
+  candidatos), y en un tramo ocioso preguntaba *Ninguno* instante tras instante.
+  *Tests:* `modo Predecir: el lote con E/S tiene 12 preguntas, 7 de ellas disputadas`,
+  `modo Predecir: todas las decisiones, pero de cada tramo de CPU ociosa sólo el primer instante`,
+  `modo Predecir: sólo las disputadas son exactamente las decisiones con dos o más candidatos`.
 - **La simulación avanza con la respuesta correcta**, no con la del alumno, para
   que un error temprano no arrastre todas las decisiones siguientes.
 - **Segunda pregunta** sólo cuando la política la amerita: en VRR, cuántas
@@ -297,7 +385,7 @@ Los promedios admiten dos decimales, con punto o con coma.
 ## Publicación
 
 - **GitHub Pages** sirve `index.html` desde la rama `main` de
-  `levicot/iso-planificacion-cpu`.
+  `unlp-so/iso-planificacion-cpu`.
 - **Artifact de Claude:** se publica `simulador.html`, generado con
   `npm run fragmento`.
 - La carpeta [`diseno/`](diseno) contiene el lienzo de Claude Design con las
